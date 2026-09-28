@@ -1,0 +1,6 @@
+{
+  "name": "UniSpace-CX Call & Chat Routing",
+  "description": "Hệ thống quản lý và cấu hình định tuyến đa kênh (Call Routing & Chat Routing) tổng đài thông minh UniSpace-CX",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
