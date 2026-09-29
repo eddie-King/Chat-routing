@@ -12,10 +12,12 @@ import { RealtimeDashboardView } from '@/components/call-routing/RealtimeDashboa
 import { PerformanceReportView } from '@/components/call-routing/PerformanceReportView';
 import { SocialMediaConfigView } from '@/components/social-media/SocialMediaConfigView';
 import { AutoMessageConfigView } from '@/components/chat-routing/AutoMessageConfigView';
+import { ChatRoutingInputConfigView } from '@/components/chat-routing/ChatRoutingInputConfigView';
 
 const VIEW_TITLES: Record<CallRoutingSubView, string> = {
   'routing-config': 'Cấu hình định tuyến Thoại (Call Routing)',
   'chat-routing-config': 'Cấu hình định tuyến Chat (Chat Routing)',
+  'chat-routing-input': 'Cấu hình Input Chat Routing (Type, Value, Output)',
   'social-media-channels': 'Cấu hình Kênh Mạng Xã Hội',
   'auto-messages-config': 'Cấu hình Tin nhắn Tự động (SLA Chờ & Đóng phiên)',
   'skill-management': 'Quản lý kỹ năng',
@@ -60,6 +62,15 @@ export default function Home() {
           {currentView === 'chat-routing-config' && (
             <ChatRoutingConfigView 
               onSwitchToCallRouting={() => setCurrentView('routing-config')} 
+              onSwitchToChatInputRouting={() => setCurrentView('chat-routing-input')}
+              onSwitchToSocialMedia={() => setCurrentView('social-media-channels')}
+              onSwitchToAutoMessages={() => setCurrentView('auto-messages-config')}
+            />
+          )}
+          {currentView === 'chat-routing-input' && (
+            <ChatRoutingInputConfigView 
+              onSwitchToCallRouting={() => setCurrentView('routing-config')}
+              onSwitchToChatRouting={() => setCurrentView('chat-routing-config')}
               onSwitchToSocialMedia={() => setCurrentView('social-media-channels')}
               onSwitchToAutoMessages={() => setCurrentView('auto-messages-config')}
             />
@@ -74,6 +85,7 @@ export default function Home() {
             <AutoMessageConfigView 
               onSwitchToCallRouting={() => setCurrentView('routing-config')} 
               onSwitchToChatRouting={() => setCurrentView('chat-routing-config')}
+              onSwitchToChatInputRouting={() => setCurrentView('chat-routing-input')}
               onSwitchToSocialMedia={() => setCurrentView('social-media-channels')}
             />
           )}

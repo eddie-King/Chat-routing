@@ -1,83 +1,150 @@
-export interface WaitTimeSlaConfig {
-  enabled: boolean;
-  standardWaitMinutes: number; // Mặc định: 10 phút
-  standardMessage: string;
-  vipWaitMinutes: number; // Mặc định: 3 phút
-  vipMessage: string;
-  channels: string[]; // Các kênh áp dụng
+export type AutoMessageTriggerType = 
+  | 'IMMEDIATE'            // Ngay khi khách mở phiên chat / gửi tin nhắn đầu tiên
+  | 'WAIT_TIMEOUT'         // Sau khi chờ tiếp nhận quá thời gian (phút/giây)
+  | 'OFF_HOURS'            // Khi gửi tin nhắn ngoài khung giờ làm việc
+  | 'INACTIVITY_REMINDER'  // Nhắc nhở khi khách không tương tác sau khoảng thời gian
+  | 'AUTO_CLOSE'           // Tự động đóng phiên sau khoảng thời gian không phản hồi
+  | 'QUEUE_OVERLOAD'       // Khi số lượng khách chờ trong hàng đợi vượt ngưỡng
+  | 'SESSION_CLOSED'       // Ngay khi kết thúc phiên chat (Khảo sát CSAT / Lời cảm ơn)
+  | 'CUSTOM';              // Điều kiện tùy chỉnh khác
+
+export interface AutoMessageTriggerConfig {
+  type: AutoMessageTriggerType;
+  typeLabel: string;
+  value?: number;
+  unit?: 'giây' | 'phút' | 'giờ' | 'khách';
+  timeFrom?: string;
+  timeTo?: string;
+  summaryText: string;
 }
 
-export interface QueueOverloadConfig {
-  enabled: boolean;
-  maxWaitingThreshold: number; // Ngưỡng số lượng khách chờ kích hoạt quá tải (VD: 20 người)
-  message: string; // Tin nhắn thông báo khi hàng đợi quá tải
-  channels: string[]; // Các kênh áp dụng
+export interface AutoMessageVariable {
+  code: string;
+  label: string;
+  sampleValue?: string;
 }
 
-export interface InactivityCloseConfig {
-  enabled: boolean;
-  inactivityMinutes: number; // Thời gian không tương tác (VD: 15 phút)
-  message: string; // Tin nhắn xác nhận đóng phiên chat
-  channels: string[]; // Các kênh áp dụng
-}
-
-export interface AutoMessageConfig {
+export interface AutoMessageCaseItem {
   id: string;
+  code: string;
   name: string;
-  scope: 'TOAN_HE_THONG' | 'THEO_HANG_DOI';
-  queueId?: string;
-  queueName?: string;
-  updatedAt: string;
-  updatedBy: string;
-  waitTimeSla: WaitTimeSlaConfig;
-  queueOverload: QueueOverloadConfig;
-  inactivityClose: InactivityCloseConfig;
+  description: string;
+  category: string;
+  enabled: boolean;
+  priority: number;
+  trigger: AutoMessageTriggerConfig;
+  message: string;
+  channels: string[];
+  variables: AutoMessageVariable[];
+  actionTag?: string;
+  isCustom?: boolean;
 }
 
-export const INITIAL_AUTO_MESSAGE_CONFIG: AutoMessageConfig = {
-  id: 'auto-msg-default',
-  name: 'Cấu hình Tự động gửi tin nhắn SLA Chờ, Quá tải & Đóng phiên (Toàn hệ thống)',
-  scope: 'TOAN_HE_THONG',
-  updatedAt: '28/09/2026 00:18:00',
-  updatedBy: 'Admin Hệ Thống',
-  waitTimeSla: {
+export const AUTO_MESSAGE_CATEGORIES = [
+  'Tất cả',
+  'Lời chào',
+  'SLA & Chờ',
+  'Lịch làm việc',
+  'Tùy chỉnh'
+] as const;
+
+export const ALL_AUTO_MESSAGE_CHANNELS = [
+  'Facebook',
+  'Zalo OA',
+  'Website LiveChat',
+  'Telegram',
+  'SMS'
+] as const;
+
+export const TRIGGER_TYPE_OPTIONS: { type: AutoMessageTriggerType; label: string; defaultUnit?: 'giây' | 'phút' | 'giờ' | 'khách' }[] = [
+  { type: 'IMMEDIATE', label: 'Ngay khi mở phiên chat (Sự kiện tức thì)' },
+  { type: 'WAIT_TIMEOUT', label: 'Quá thời gian chờ tiếp nhận (Theo thời gian chờ)', defaultUnit: 'phút' },
+  { type: 'OFF_HOURS', label: 'Ngoài giờ làm việc (Theo khung giờ)' },
+  { type: 'QUEUE_OVERLOAD', label: 'Hàng đợi quá tải (Theo số lượng khách chờ)', defaultUnit: 'khách' },
+  { type: 'INACTIVITY_REMINDER', label: 'Khách không tương tác (Theo thời gian chờ)', defaultUnit: 'phút' },
+  { type: 'AUTO_CLOSE', label: 'Tự động đóng phiên (Theo thời gian chờ)', defaultUnit: 'phút' },
+  { type: 'SESSION_CLOSED', label: 'Khi kết thúc phiên chat (Sự kiện tức thì)' },
+  { type: 'CUSTOM', label: 'Điều kiện tùy chỉnh khác' }
+];
+
+export const COMMON_AUTO_MESSAGE_VARIABLES: AutoMessageVariable[] = [
+  { code: '{TEN_KHACH_HANG}', label: 'Tên khách hàng', sampleValue: 'Nguyễn Văn An' },
+  { code: '{TEN_AGENT}', label: 'Tên tư vấn viên', sampleValue: 'Lê Thanh Trúc' },
+  { code: '{TEN_HANG_DOI}', label: 'Tên hàng đợi', sampleValue: 'Hỗ trợ Kỹ thuật & Sự cố' },
+  { code: '{HOTLINE}', label: 'Hotline', sampleValue: '1900 6868' },
+  { code: '{THOI_GIAN_CHO}', label: 'Thời gian chờ', sampleValue: '5 phút' },
+  { code: '{GIO_LAM_VIEC}', label: 'Khung giờ làm việc', sampleValue: '08:00 - 22:00' }
+];
+
+// CHỈ GIỮ LẠI ĐÚNG 3 DATA SAMPLE THEO YÊU CẦU
+export const INITIAL_AUTO_MESSAGE_CASES: AutoMessageCaseItem[] = [
+  {
+    id: 'WELCOME_MSG',
+    code: 'AUTO_WELCOME',
+    name: 'Lời chào khi bắt đầu chat',
+    description: 'Gửi ngay khi khách mở phiên chat',
+    category: 'Lời chào',
     enabled: true,
-    standardWaitMinutes: 10,
-    standardMessage: 'Kính chào {TEN_KHACH_HANG}, hiện tại tất cả tư vấn viên của chúng tôi đều đang bận hỗ trợ khách hàng. Hệ thống đã ghi nhận yêu cầu của bạn và sẽ kết nối ngay khi có tư vấn viên sẵn sàng. Xin vui lòng giữ kết nối trong giây lát. Trân trọng cảm ơn!',
-    vipWaitMinutes: 3,
-    vipMessage: 'Kính chào Quý khách VIP {TEN_KHACH_HANG}, hệ thống đã ghi nhận yêu cầu của quý khách và đang ưu tiên kết nối với tư vấn viên. Xin quý khách vui lòng giữ kết nối trong giây lát. Trân trọng cảm ơn!',
-    channels: ['Facebook', 'Zalo OA', 'Website LiveChat', 'ZBS', 'SMS']
+    priority: 1,
+    trigger: {
+      type: 'IMMEDIATE',
+      typeLabel: 'Ngay lập tức',
+      summaryText: 'Ngay khi mở phiên chat'
+    },
+    message: 'Xin chào {TEN_KHACH_HANG}! UniSpace đã nhận được tin nhắn của bạn. Tư vấn viên sẽ phản hồi trong giây lát.',
+    channels: ['Facebook', 'Zalo OA', 'Website LiveChat'],
+    variables: [
+      { code: '{TEN_KHACH_HANG}', label: 'Tên khách hàng', sampleValue: 'Nguyễn Văn An' },
+      { code: '{HOTLINE}', label: 'Hotline', sampleValue: '1900 6868' }
+    ],
+    actionTag: 'Khởi tạo phiên tiếp nhận'
   },
-  queueOverload: {
+  {
+    id: 'WAIT_SLA',
+    code: 'AUTO_WAIT_SLA',
+    name: 'Quá thời gian chờ tiếp nhận',
+    description: 'Gửi khi khách chờ quá 5 phút',
+    category: 'SLA & Chờ',
     enabled: true,
-    maxWaitingThreshold: 20,
-    message: 'Kính chào {TEN_KHACH_HANG}, hiện tại hàng đợi {TEN_HANG_DOI} đang trong giờ cao điểm với {SO_LUONG_DANG_CHO} khách hàng đang chờ (dự kiến ~{THOI_GIAN_DU_KIEN} phút). Xin vui lòng kiên nhẫn giữ kết nối để được hỗ trợ. Trân trọng cảm ơn!',
-    channels: ['Facebook', 'Zalo OA', 'Website LiveChat', 'ZBS', 'SMS']
+    priority: 2,
+    trigger: {
+      type: 'WAIT_TIMEOUT',
+      typeLabel: 'Thời gian chờ',
+      value: 5,
+      unit: 'phút',
+      summaryText: 'Sau 5 phút chờ'
+    },
+    message: 'Kính chào {TEN_KHACH_HANG}, hệ thống đang sắp xếp tư vấn viên hỗ trợ bạn. Xin vui lòng giữ kết nối trong giây lát. Hotline: {HOTLINE}.',
+    channels: ['Facebook', 'Zalo OA', 'Website LiveChat'],
+    variables: [
+      { code: '{TEN_KHACH_HANG}', label: 'Tên khách hàng', sampleValue: 'Nguyễn Văn An' },
+      { code: '{THOI_GIAN_CHO}', label: 'Thời gian chờ', sampleValue: '5 phút' },
+      { code: '{HOTLINE}', label: 'Hotline', sampleValue: '1900 6868' }
+    ],
+    actionTag: 'Duy trì kết nối'
   },
-  inactivityClose: {
+  {
+    id: 'OFF_HOURS',
+    code: 'AUTO_OFF_HOURS',
+    name: 'Ngoài giờ làm việc',
+    description: 'Gửi ngoài khung giờ 08:00 - 22:00',
+    category: 'Lịch làm việc',
     enabled: true,
-    inactivityMinutes: 15,
-    message: 'Chào {TEN_KHACH_HANG}, đã qua {THOI_GIAN_KHONG_TUONG_TAC} phút kể từ phản hồi gần nhất, hệ thống chưa nhận được tin nhắn mới từ bạn. Hệ thống xin phép được tự động xác nhận đóng phiên hỗ trợ. Cảm ơn bạn đã liên hệ!',
-    channels: ['Facebook', 'Zalo OA', 'Website LiveChat', 'ZBS']
+    priority: 3,
+    trigger: {
+      type: 'OFF_HOURS',
+      typeLabel: 'Ngoài giờ',
+      timeFrom: '22:00',
+      timeTo: '08:00',
+      summaryText: 'Ngoài giờ: 22:00 - 08:00'
+    },
+    message: 'Kính chào {TEN_KHACH_HANG}, hiện tại đã hết giờ làm việc trực tuyến ({GIO_LAM_VIEC}). Chuyên viên sẽ phản hồi vào đầu ca sáng mai. Hotline: {HOTLINE}.',
+    channels: ['Facebook', 'Zalo OA', 'Website LiveChat'],
+    variables: [
+      { code: '{TEN_KHACH_HANG}', label: 'Tên khách hàng', sampleValue: 'Phạm Thu Trang' },
+      { code: '{GIO_LAM_VIEC}', label: 'Khung giờ làm việc', sampleValue: '08:00 - 22:00' },
+      { code: '{HOTLINE}', label: 'Hotline', sampleValue: '1900 6868' }
+    ],
+    actionTag: 'Tạo phiếu Offline'
   }
-};
-
-export const AVAILABLE_VARIABLES_WAIT_SLA = [
-  { code: '{TEN_KHACH_HANG}', label: 'Tên khách hàng' },
-  { code: '{THOI_GIAN_CHO}', label: 'Thời gian đã chờ' },
-  { code: '{TEN_HANG_DOI}', label: 'Tên hàng đợi' }
-];
-
-export const AVAILABLE_VARIABLES_OVERLOAD = [
-  { code: '{TEN_KHACH_HANG}', label: 'Tên khách hàng' },
-  { code: '{SO_LUONG_DANG_CHO}', label: 'Số lượng khách đang chờ' },
-  { code: '{THOI_GIAN_DU_KIEN}', label: 'Thời gian dự kiến chờ' },
-  { code: '{TEN_HANG_DOI}', label: 'Tên hàng đợi' },
-  { code: '{HOTLINE}', label: 'Số hotline tổng đài' }
-];
-
-export const AVAILABLE_VARIABLES_INACTIVITY = [
-  { code: '{TEN_KHACH_HANG}', label: 'Tên khách hàng' },
-  { code: '{THOI_GIAN_KHONG_TUONG_TAC}', label: 'Thời gian không tương tác' },
-  { code: '{TEN_AGENT}', label: 'Tên tư vấn viên phụ trách' }
 ];

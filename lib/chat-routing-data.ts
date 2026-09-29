@@ -1,9 +1,37 @@
+export type ChatRoutingInputType = 'Nguồn' | 'Page' | 'Kênh tiếp nhận';
+
+export interface ChatRoutingInputFilterItem {
+  id: string;
+  type: ChatRoutingInputType; // Cột 1: Type (Nguồn, Page...)
+  values: string[]; // Cột 2: Value (Cho phép chọn nhiều)
+  output: string; // Cột 3: Output (Tên bộ lọc / giá trị cung cấp cho trường Input)
+  description?: string;
+  createdAt: string;
+  status: 'Hoạt động' | 'Tạm dừng';
+}
+
+export interface ChatRoutingInputRule {
+  id: string;
+  source: 'Zalo' | 'Facebook' | string;
+  values: string[]; // Cho phép chọn nhiều Page / OA / Giá trị
+  output: string;   // Đích tiếp nhận / Đầu ra
+}
+
 export interface ChatRoutingConfigItem {
   id: string;
   queueName: string; // Tên hàng đợi Chat (VD: Hàng đợi Hỗ trợ Kỹ thuật & Báo sự cố)
   queueCode: string; // Mã hàng đợi Chat (VD: QUEUE_TECH_SUPPORT)
-  chatSources: string[]; // Nguồn tiếp nhận chat (Facebook, Zalo,...)
-  branch?: string; // Chi nhánh (không bắt buộc, VD: Chi nhánh Hà Nội, Chi nhánh TP. Hồ Chí Minh)
+  
+  // Trường Input: Điều kiện tiếp nhận phiên chat (3 trường: Nguồn, Value - cho phép chọn nhiều, Output)
+  inputSource?: 'Zalo' | 'Facebook' | string; // Nguồn tiếp nhận: Zalo, Facebook
+  inputValues?: string[]; // Danh sách các Page / OA / Giá trị được chọn (cho phép chọn nhiều)
+  inputPage?: string; // Tên Page hoặc OA (tương thích)
+  inputPageId?: string; // ID của Page hoặc OA
+  inputOutput?: string; // Đích đến / Hàng đợi Output
+  inputRules?: ChatRoutingInputRule[];
+  branch?: string; // Bỏ trường chi nhánh (giữ optional để tránh lỗi tham chiếu cũ nếu có)
+
+  chatSources: string[]; // Nguồn tiếp nhận chat (Tương thích: Facebook, Zalo,...)
   nluIntents?: string[]; // Tương thích cũ
   intakeChannels?: string[]; // Mặc định tất cả các kênh tiếp nhận
   channel?: string; // Tương thích hiển thị: 'Tất cả kênh'
@@ -69,6 +97,64 @@ export const CHAT_SOURCES = [
   'Email'
 ] as const;
 
+export const CHAT_INPUT_SOURCES = [
+  'Zalo',
+  'Facebook'
+] as const;
+
+export interface ChatPageItem {
+  id: string;
+  name: string;
+}
+
+export const CHAT_PAGES_BY_SOURCE: Record<'Zalo' | 'Facebook', ChatPageItem[]> = {
+  Zalo: [
+    { id: 'ALL_ZALO', name: 'Tất cả Zalo Official Account' },
+    { id: '293847102938475', name: 'UniSpace Official Account VIP' },
+    { id: '109283746501928', name: 'Trung tâm CSKH UniSpace Toàn quốc' },
+    { id: '839201948572019', name: 'UniSpace Tech Support OA' },
+    { id: '647382910482910', name: 'UniSpace Zalo CSKH Miền Nam' }
+  ],
+  Facebook: [
+    { id: 'ALL_FB', name: 'Tất cả Fanpage Facebook' },
+    { id: '350408238159135', name: 'UCX Customer Support' },
+    { id: '482190341829012', name: 'UniSpace Tư vấn Bán hàng & Dịch vụ' },
+    { id: '981240182749102', name: 'UniSpace Fanpage Toàn quốc' },
+    { id: '712039485721901', name: 'UniSpace Tech & Dev Support' }
+  ]
+};
+
+// Dữ liệu mẫu ban đầu cho Cấu hình Input Chat Routing (Type, Value [chọn nhiều], Output)
+export const INITIAL_CHAT_INPUT_FILTERS: ChatRoutingInputFilterItem[] = [
+  {
+    id: 'flt-1',
+    type: 'Page',
+    values: ['UCX Customer Support', 'UniSpace Fanpage Toàn quốc'],
+    output: 'INPUT_FB_TECH_SUPPORT',
+    description: 'Điều kiện tiếp nhận phiên chat từ các Fanpage hỗ trợ kỹ thuật và thông tin',
+    createdAt: '28/08/2026 09:30:15',
+    status: 'Hoạt động'
+  },
+  {
+    id: 'flt-2',
+    type: 'Page',
+    values: ['UniSpace Official Account VIP'],
+    output: 'INPUT_ZALO_VIP_DESK',
+    description: 'Điều kiện tiếp nhận từ Zalo OA khách hàng đặc quyền VIP',
+    createdAt: '28/08/2026 10:15:20',
+    status: 'Hoạt động'
+  },
+  {
+    id: 'flt-3',
+    type: 'Page',
+    values: ['UniSpace Tư vấn Bán hàng & Dịch vụ'],
+    output: 'INPUT_FB_SALES_ADVISORY',
+    description: 'Điều kiện tiếp nhận từ Fanpage tư vấn bán hàng và dịch vụ trực tuyến',
+    createdAt: '28/08/2026 11:00:45',
+    status: 'Hoạt động'
+  }
+];
+
 export const CHAT_BRANCHES = [
   'Chi nhánh Hà Nội',
   'Chi nhánh TP. Hồ Chí Minh',
@@ -131,6 +217,18 @@ export const CHAT_QUEUE_PRESETS = [
     defaultIntents: ['#yeu_cau_gap_tong_dai_vien']
   }
 ];
+
+export const CHAT_OUTPUT_OPTIONS = [
+  'Hàng đợi mặc định theo cấu hình (Mặc định)',
+  'QUEUE_TECH_SUPPORT - Hàng đợi Hỗ trợ Kỹ thuật & Sự cố',
+  'QUEUE_SALES_ADVISORY - Hàng đợi Tư vấn Gói cước & Bán hàng',
+  'QUEUE_BILLING_DISPUTE - Hàng đợi Tra soát Cước & Khiếu nại',
+  'QUEUE_ACCOUNT_SERVICES - Hàng đợi Quản lý Tài khoản & Bảo mật',
+  'QUEUE_VIP_CARE - Hàng đợi Chăm sóc Khách hàng Đặc quyền VIP',
+  'BOT_UNIBOT_AI - Trợ lý ảo AI tiếp nhận tự động (Bot Assistant)',
+  'DIRECT_AGENT - Phân bổ trực tiếp tới Tư vấn viên (Sticky Agent)',
+  'FALLBACK_OFFLINE - Chuyển sang Ticket Offline / Gửi email'
+] as const;
 
 export const CHAT_FALLBACK_OPTIONS = [
   'AI Bot Assistant (UniBot AI)',
@@ -198,11 +296,16 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     queueName: 'Hàng đợi Hỗ trợ Kỹ thuật & Báo sự cố',
     queueCode: 'QUEUE_TECH_SUPPORT',
     name: 'Hàng đợi Hỗ trợ Kỹ thuật & Báo sự cố',
-    chatSources: ['Facebook', 'Zalo', 'Website LiveChat'],
-    branch: 'Chi nhánh Hà Nội',
+    inputSource: 'Facebook',
+    inputValues: ['UCX Customer Support', 'UniSpace Fanpage Toàn quốc'],
+    inputPage: 'UCX Customer Support',
+    inputPageId: '350408238159135',
+    inputOutput: 'INPUT_FB_TECH_SUPPORT',
+    branch: '',
+    chatSources: ['Facebook'],
     nluIntents: ['#bao_loi_ky_thuat', '#huong_dan_cai_dat', '#su_co_he_thong'],
-    intakeChannels: ['Facebook', 'Zalo', 'Website LiveChat'],
-    channel: 'Đa kênh (Facebook, Zalo, Web)',
+    intakeChannels: ['Facebook'],
+    channel: 'Facebook - UCX Customer Support (+1)',
     
     // VIP Routing & Queue VIP
     routingVIP: 'Có',
@@ -243,7 +346,7 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     autoGreeting: true,
     status: 'Hoạt động',
     createdAt: '28/08/2026 10:45:12',
-    description: 'Tiếp nhận yêu cầu hỗ trợ kỹ thuật từ Facebook, Zalo và Website LiveChat chuyển về queue này',
+    description: 'Tiếp nhận yêu cầu hỗ trợ kỹ thuật từ Facebook chuyển về queue này',
     note: 'Ưu tiên kết nối agent có kỹ năng IT Support Level 2'
   },
   {
@@ -251,11 +354,16 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     queueName: 'Hàng đợi Chăm sóc Khách hàng Đặc quyền VIP',
     queueCode: 'QUEUE_VIP_CARE',
     name: 'Hàng đợi Chăm sóc Khách hàng Đặc quyền VIP',
-    chatSources: ['Zalo', 'Viber', 'Website LiveChat'],
-    branch: 'Chi nhánh TP. Hồ Chí Minh',
+    inputSource: 'Zalo',
+    inputValues: ['UniSpace Official Account VIP'],
+    inputPage: 'UniSpace Official Account VIP',
+    inputPageId: '293847102938475',
+    inputOutput: 'INPUT_ZALO_VIP_DESK',
+    branch: '',
+    chatSources: ['Zalo'],
     nluIntents: ['#yeu_cau_gap_tong_dai_vien'],
-    intakeChannels: ['Zalo', 'Viber', 'Website LiveChat'],
-    channel: 'Zalo, Viber, Web LiveChat',
+    intakeChannels: ['Zalo'],
+    channel: 'Zalo - UniSpace Official Account VIP',
     
     // VIP Routing & Queue VIP
     routingVIP: 'Có',
@@ -286,7 +394,7 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     autoGreeting: true,
     status: 'Hoạt động',
     createdAt: '27/08/2026 14:22:08',
-    description: 'Tiếp nhận phiên chat VIP từ Zalo OA và Viber chuyển vào hàng đợi đặc quyền',
+    description: 'Tiếp nhận phiên chat VIP từ Zalo OA chuyển vào hàng đợi đặc quyền',
     note: 'Ưu tiên kết nối lại với chuyên viên đã tương tác trước đó'
   },
   {
@@ -294,11 +402,16 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     queueName: 'Hàng đợi Tư vấn Gói cước & Bán hàng',
     queueCode: 'QUEUE_SALES_ADVISORY',
     name: 'Hàng đợi Tư vấn Gói cước & Bán hàng',
-    chatSources: ['Facebook', 'Instagram', 'Website LiveChat'],
+    inputSource: 'Facebook',
+    inputValues: ['UniSpace Tư vấn Bán hàng & Dịch vụ'],
+    inputPage: 'UniSpace Tư vấn Bán hàng & Dịch vụ',
+    inputPageId: '482190341829012',
+    inputOutput: 'INPUT_FB_SALES_ADVISORY',
     branch: '',
+    chatSources: ['Facebook'],
     nluIntents: ['#tu_van_goi_cuoc', '#bao_gia_san_pham', '#khuyen_mai_uu_dai'],
-    intakeChannels: ['Facebook', 'Instagram', 'Website LiveChat'],
-    channel: 'Facebook, Instagram, Web LiveChat',
+    intakeChannels: ['Facebook'],
+    channel: 'Facebook - UniSpace Tư vấn Bán hàng & Dịch vụ',
     
     // VIP Routing
     routingVIP: 'Không',
@@ -326,58 +439,7 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     autoGreeting: true,
     status: 'Hoạt động',
     createdAt: '26/08/2026 09:15:40',
-    description: 'Tiếp nhận yêu cầu tư vấn mua hàng, báo giá từ Facebook Fanpage, Instagram và Website',
+    description: 'Tiếp nhận yêu cầu tư vấn mua hàng, báo giá từ Facebook Fanpage',
     note: 'Tự động tạo ticket nếu khách nhắn vào khung giờ ngoài ca trực (sau 22:00)'
-  },
-  {
-    id: 'chat-cfg-4',
-    queueName: 'Hàng đợi Tra soát Cước & Khiếu nại dịch vụ',
-    queueCode: 'QUEUE_BILLING_DISPUTE',
-    name: 'Hàng đợi Tra soát Cước & Khiếu nại dịch vụ',
-    chatSources: ['Facebook', 'Zalo', 'Telegram'],
-    branch: 'Chi nhánh Đà Nẵng',
-    nluIntents: ['#khieu_nai_dich_vu', '#tra_soat_cuoc_phi', '#yeu_cau_hoan_tien'],
-    intakeChannels: ['Facebook', 'Zalo', 'Telegram'],
-    channel: 'Facebook, Zalo, Telegram',
-    
-    // VIP Routing & Queue VIP
-    routingVIP: 'Có',
-    vipCustomerGroup: 'Tất cả khách hàng VIP',
-    vipRoutingMethod: 'Kỹ năng',
-    vipSkillName: 'Hỗ trợ Thanh toán & Hóa đơn',
-    vipRecentAgent: true,
-    vipRecentScope: 'Cùng nhóm kỹ năng Chat',
-    vipRecentHours: 12,
-    vipQueueSize: 10,
-    vipQueueWaitTime: 20,
-    vipCustomerTimeoutSec: 200,
-    vipMaxConcurrentChats: 3,
-    vipAssignedAgents: ['204 - Đặng Mai Hương (VIP Desk)'],
-
-    // Standard Routing & Queue Thường
-    routingStandard: 'Có',
-    stdRoutingMethod: 'Kỹ năng',
-    stdSkillName: 'Hỗ trợ Thanh toán & Hóa đơn',
-    stdRecentAgent: false,
-    stdQueueSize: 25,
-    stdQueueWaitTime: 45,
-    stdCustomerTimeoutSec: 200,
-    stdMaxConcurrentChats: 4,
-    stdAssignedAgents: ['206 - Phan Văn Huy (Tech Helpdesk)', '205 - Nguyễn Bảo Ngọc (Omni Agent)'],
-
-    fallbackAction: 'AI Bot Assistant (UniBot AI)',
-    queueSize: 25,
-    queueWaitTime: 45,
-    customerTimeoutSec: 200,
-    maxConcurrentChats: 4,
-    assignedAgents: ['204 - Đặng Mai Hương (VIP Desk)', '206 - Phan Văn Huy (Tech Helpdesk)'],
-    strategy: 'Skill-based',
-    skillGroup: 'Thanh toán & Hóa đơn điện tử',
-    slaFirstResponseSec: 30,
-    autoGreeting: true,
-    status: 'Hoạt động',
-    createdAt: '25/08/2026 16:30:00',
-    description: 'Tiếp nhận phản ánh, tra soát cước, hoàn tiền từ Facebook, Zalo, Telegram đưa vào queue xử lý khẩn cấp',
-    note: 'SLA phản hồi lần đầu dưới 30 giây'
   }
 ];

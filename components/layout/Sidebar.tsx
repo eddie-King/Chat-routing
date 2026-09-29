@@ -21,12 +21,14 @@ import {
   GitFork,
   Clock,
   Calendar,
-  Contact
+  Contact,
+  Filter
 } from 'lucide-react';
 
 export type CallRoutingSubView = 
   | 'routing-config'
   | 'chat-routing-config'
+  | 'chat-routing-input'
   | 'social-media-channels'
   | 'auto-messages-config'
   | 'skill-management'
@@ -57,7 +59,7 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const isRoutingGroupActive = currentView === 'routing-config' || currentView === 'chat-routing-config' || currentView === 'auto-messages-config';
+  const isRoutingGroupActive = currentView === 'routing-config' || currentView === 'chat-routing-config' || currentView === 'chat-routing-input' || currentView === 'auto-messages-config';
 
   return (
     <aside 
@@ -270,6 +272,20 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
                   >
                     <span className={`w-1.5 h-1.5 rounded-full ${currentView === 'chat-routing-config' ? 'bg-[#f25621]' : 'bg-slate-300'}`}></span>
                     <span className="truncate">Phân phối chat</span>
+                  </button>
+
+                  {/* Cấu hình Input Chat Routing */}
+                  <button
+                    onClick={() => onSelectView('chat-routing-input')}
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-left transition-colors cursor-pointer ${
+                      currentView === 'chat-routing-input'
+                        ? 'text-[#f25621] font-semibold bg-orange-50/60'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                    title="Cấu hình Input Chat Routing (Type, Value, Output)"
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${currentView === 'chat-routing-input' ? 'bg-[#f25621]' : 'bg-slate-300'}`}></span>
+                    <span className="truncate">Cấu hình Input Chat</span>
                   </button>
 
                   {/* Cấu hình IVR */}
@@ -485,6 +501,20 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
                       <span className="truncate">Chat Routing</span>
                     </button>
 
+                    {/* Submenu: Cấu hình Input Chat Routing */}
+                    <button
+                      onClick={() => onSelectView('chat-routing-input')}
+                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-left transition-colors cursor-pointer text-xs ${
+                        currentView === 'chat-routing-input'
+                          ? 'bg-orange-50 text-[#f25621] font-bold border-l-2 border-[#f25621]'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      }`}
+                      title="Cấu hình Input Chat Routing (Type, Value, Output)"
+                    >
+                      <Filter className={`w-3.5 h-3.5 shrink-0 ${currentView === 'chat-routing-input' ? 'text-[#f25621]' : 'text-slate-400'}`} />
+                      <span className="truncate">Cấu hình Input Chat</span>
+                    </button>
+
                     {/* Submenu 3: Tin nhắn tự động (SLA & Đóng phiên) */}
                     <button
                       onClick={() => onSelectView('auto-messages-config')}
@@ -517,6 +547,13 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
                       className={`p-1.5 rounded ${currentView === 'chat-routing-config' ? 'bg-orange-100 text-[#f25621]' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onSelectView('chat-routing-input')}
+                      title="Cấu hình Input Chat Routing"
+                      className={`p-1.5 rounded ${currentView === 'chat-routing-input' ? 'bg-orange-100 text-[#f25621]' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      <Filter className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}

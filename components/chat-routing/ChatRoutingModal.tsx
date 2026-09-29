@@ -1,11 +1,14 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { X, Check, MessageSquare, ChevronDown } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { X, MessageSquare, ChevronDown } from 'lucide-react';
 import { 
   ChatRoutingConfigItem, 
+  ChatRoutingInputFilterItem,
+  INITIAL_CHAT_INPUT_FILTERS,
   CHAT_SOURCES,
-  CHAT_BRANCHES,
+  CHAT_PAGES_BY_SOURCE,
+  CHAT_OUTPUT_OPTIONS,
   CHAT_FALLBACK_OPTIONS, 
   CHAT_VIP_GROUPS,
   CHAT_ROUTING_METHODS,
@@ -18,12 +21,14 @@ interface ChatRoutingModalProps {
   onClose: () => void;
   onSave: (item: ChatRoutingConfigItem) => void;
   initialData: ChatRoutingConfigItem | null;
+  onNavigateToInputConfig?: () => void;
 }
 
 interface FormInnerProps {
   initialData: ChatRoutingConfigItem | null;
   onClose: () => void;
   onSave: (item: ChatRoutingConfigItem) => void;
+  onNavigateToInputConfig?: () => void;
 }
 
 function ToggleSwitch({ checked, onChange, id }: { checked: boolean; onChange: (v: boolean) => void; id?: string }) {
@@ -47,7 +52,7 @@ function ToggleSwitch({ checked, onChange, id }: { checked: boolean; onChange: (
   );
 }
 
-function ChatRoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
+function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputConfig }: FormInnerProps) {
   // Top Fields: Queue Name & Queue Code
   const [queueName, setQueueName] = useState(
     initialData?.queueName || initialData?.name || ''
@@ -56,31 +61,72 @@ function ChatRoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) 
     initialData?.queueCode || ''
   );
 
-  // Chi nhánh (không bắt buộc)
-  const [branch, setBranch] = useState(
-    initialData?.branch || ''
-  );
-
-  // Nguồn tiếp nhận chat (Facebook, Zalo,...)
-  const [selectedSources, setSelectedSources] = useState<string[]>(
-    initialData?.chatSources && initialData.chatSources.length > 0 
-      ? initialData.chatSources 
-      : ['Facebook', 'Zalo']
-  );
-  const [isSourceDropdownOpen, setIsSourceDropdownOpen] = useState(false);
-  const sourceDropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (sourceDropdownRef.current && !sourceDropdownRef.current.contains(event.target as Node)) {
-        setIsSourceDropdownOpen(false);
+  // Lấy danh sách các Output điều kiện từ Cấu hình Input (đồng bộ với localStorage nếu có)
+  const [availableInputFilters] = useState<ChatRoutingInputFilterItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('unispace_chat_input_conditions');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {
+        // ignore
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
+    return INITIAL_CHAT_INPUT_FILTERS;
+  });
+
+  // Danh sách các outcome (data từ Cấu hình Input) để chọn cho trường Input
+  const initialInputOutput = initialData?.inputOutput;
+  const outcomeOptions = useMemo(() => {
+    const list: string[] = [];
+    availableInputFilters.forEach(f => {
+      if (f.output && !list.includes(f.output)) {
+        list.push(f.output);
+      }
+    });
+    if (initialInputOutput && !list.includes(initialInputOutput)) {
+      list.unshift(initialInputOutput);
+    }
+    if (list.length === 0) {
+      list.push('INPUT_FB_TECH_SUPPORT', 'INPUT_ZALO_VIP_DESK', 'INPUT_FB_SALES_ADVISORY');
+    }
+    return list;
+  }, [availableInputFilters, initialInputOutput]);
+
+  // Giá trị của trường Input chỉ cần chọn 1 trong list data từ outcome ví dụ: INPUT_FB_TECH_SUPPORT
+  const [inputOutput, setInputOutput] = useState<string>(
+    initialData?.inputOutput || outcomeOptions[0] || 'INPUT_FB_TECH_SUPPORT'
+  );
+
+  const [inputSource, setInputSource] = useState<'Facebook' | 'Zalo'>(() => {
+    if (initialData?.inputSource === 'Zalo') return 'Zalo';
+    return 'Facebook';
+  });
+
+  const [inputValues, setInputValues] = useState<string[]>(() => {
+    if (initialData?.inputValues && initialData.inputValues.length > 0) {
+      return initialData.inputValues;
+    }
+    return [];
+  });
+
+  const handleOutcomeChange = (newOutcome: string) => {
+    setInputOutput(newOutcome);
+    const matchedFilter = availableInputFilters.find(f => f.output === newOutcome);
+    if (matchedFilter) {
+      if (matchedFilter.type === 'Nguồn') {
+        const isZaloOnly = matchedFilter.values.includes('Zalo') && !matchedFilter.values.includes('Facebook');
+        setInputSource(isZaloOnly ? 'Zalo' : 'Facebook');
+        setInputValues(matchedFilter.values);
+      } else {
+        const hasZalo = matchedFilter.values.some(v => v.toLowerCase().includes('zalo') || v.toLowerCase().includes('oa'));
+        setInputSource(hasZalo ? 'Zalo' : 'Facebook');
+        setInputValues(matchedFilter.values);
+      }
+    }
+  };
 
   // VIP Routing Section
   const [isVipRouting, setIsVipRouting] = useState(initialData ? initialData.routingVIP === 'Có' : true);
@@ -124,23 +170,6 @@ function ChatRoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) 
   // Fallback
   const [fallbackAction, setFallbackAction] = useState(initialData?.fallbackAction || CHAT_FALLBACK_OPTIONS[0]);
 
-  const toggleSource = (source: string) => {
-    if (selectedSources.includes(source)) {
-      if (selectedSources.length === 1) return; // Giữ ít nhất 1 nguồn tiếp nhận
-      setSelectedSources(selectedSources.filter((s) => s !== source));
-    } else {
-      setSelectedSources([...selectedSources, source]);
-    }
-  };
-
-  const handleToggleAll = () => {
-    if (selectedSources.length === CHAT_SOURCES.length) {
-      setSelectedSources(['Facebook', 'Zalo']);
-    } else {
-      setSelectedSources([...CHAT_SOURCES]);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!queueName.trim() || !queueCode.trim()) return;
@@ -148,18 +177,44 @@ function ChatRoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) 
     const now = new Date();
     const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
-    const savedSources = selectedSources.length > 0 ? selectedSources : ['Facebook', 'Zalo'];
+    const matchedFilter = availableInputFilters.find(f => f.output === inputOutput);
+    let curSource = inputSource;
+    let curValues = inputValues;
+    if (matchedFilter) {
+      if (matchedFilter.type === 'Nguồn') {
+        curSource = matchedFilter.values.includes('Zalo') && !matchedFilter.values.includes('Facebook') ? 'Zalo' : 'Facebook';
+        curValues = matchedFilter.values;
+      } else {
+        curSource = matchedFilter.values.some(v => v.toLowerCase().includes('zalo') || v.toLowerCase().includes('oa')) ? 'Zalo' : 'Facebook';
+        curValues = matchedFilter.values;
+      }
+    }
+
+    const savedSources = [curSource];
+    const firstPageName = curValues[0] || inputOutput;
+    const selectedPageObj = (CHAT_PAGES_BY_SOURCE[curSource] || []).find(p => p.name === firstPageName);
+    const pagesSummary = curValues.length > 1 
+      ? `${curValues[0]} (+${curValues.length - 1})` 
+      : (curValues[0] || inputOutput);
 
     const savedItem: ChatRoutingConfigItem = {
       id: initialData ? initialData.id : `chat-cfg-${Date.now()}`,
       queueName: queueName.trim(),
       queueCode: queueCode.trim(),
       name: queueName.trim(),
+
+      // Trường Input: Lưu giá trị outcome (ví dụ: INPUT_FB_TECH_SUPPORT)
+      inputSource: curSource,
+      inputValues: curValues.length > 0 ? curValues : [inputOutput],
+      inputPage: firstPageName,
+      inputPageId: selectedPageObj?.id || '',
+      inputOutput: inputOutput.trim(),
+      branch: undefined, // Bỏ trường chi nhánh
+
       chatSources: savedSources,
-      branch: branch.trim() || undefined,
       intakeChannels: savedSources,
-      channel: savedSources.join(', '),
-      nluIntents: [],
+      channel: inputOutput.trim(),
+      nluIntents: initialData?.nluIntents || [],
 
       // VIP Routing & Queue VIP riêng
       routingVIP: isVipRouting ? 'Có' : 'Không',
@@ -197,7 +252,7 @@ function ChatRoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) 
       autoGreeting: initialData?.autoGreeting ?? true,
       status: initialData?.status || 'Hoạt động',
       createdAt: initialData ? initialData.createdAt : formattedDate,
-      description: initialData?.description || `Định tuyến phiên chat từ ${savedSources.join(', ')} vào ${queueName}`,
+      description: initialData?.description || `Định tuyến ${inputSource} (${pagesSummary}) -> ${inputOutput}`,
       note: initialData?.note || ''
     };
 
@@ -257,88 +312,25 @@ function ChatRoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) 
             </div>
           </div>
 
-          {/* Row 2: Nguồn tiếp nhận chat * & Chi nhánh (Không bắt buộc) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Nguồn tiếp nhận chat */}
-            <div className="relative" ref={sourceDropdownRef}>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Nguồn tiếp nhận chat <span className="text-red-500">*</span>
-              </label>
-              <button
-                type="button"
-                onClick={() => setIsSourceDropdownOpen(!isSourceDropdownOpen)}
-                className="w-full h-9.5 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors flex items-center justify-between text-left cursor-pointer"
-              >
-                <span className="truncate pr-2">
-                  {selectedSources.length === 0
-                    ? '-- Chọn nguồn tiếp nhận --'
-                    : selectedSources.length === CHAT_SOURCES.length
-                    ? 'Tất cả nguồn (Đa kênh)'
-                    : selectedSources.join(', ')}
-                </span>
-                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${isSourceDropdownOpen ? 'rotate-180 text-[#f25621]' : ''}`} />
-              </button>
-
-              {/* Dropdown popup */}
-              {isSourceDropdownOpen && (
-                <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-md shadow-lg py-1 max-h-56 overflow-y-auto animate-in fade-in-50 duration-100">
-                  <div 
-                    onClick={handleToggleAll}
-                    className="px-3 py-2 hover:bg-orange-50/60 flex items-center justify-between cursor-pointer border-b border-slate-100 text-xs font-medium text-[#f25621]"
-                  >
-                    <span className="flex items-center gap-2 select-none">
-                      <input
-                        type="checkbox"
-                        checked={selectedSources.length === CHAT_SOURCES.length}
-                        onChange={handleToggleAll}
-                        className="rounded text-[#f25621] focus:ring-[#f25621] cursor-pointer"
-                      />
-                      <span>Tất cả nguồn (Đa kênh)</span>
-                    </span>
-                    {selectedSources.length === CHAT_SOURCES.length && (
-                      <Check className="w-3.5 h-3.5 text-[#f25621]" />
-                    )}
-                  </div>
-                  {CHAT_SOURCES.map((source) => {
-                    const isChecked = selectedSources.includes(source);
-                    return (
-                      <div
-                        key={source}
-                        onClick={() => toggleSource(source)}
-                        className="px-3 py-1.5 hover:bg-slate-50 flex items-center justify-between cursor-pointer text-xs text-slate-700"
-                      >
-                        <span className="flex items-center gap-2 select-none">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleSource(source)}
-                            className="rounded text-[#f25621] focus:ring-[#f25621] cursor-pointer"
-                          />
-                          <span>{source}</span>
-                        </span>
-                        {isChecked && <Check className="w-3.5 h-3.5 text-[#f25621]" />}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Chi nhánh (không bắt buộc) */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Chi nhánh <span className="text-xs font-normal text-slate-500">(Không bắt buộc)</span>
-              </label>
+          {/* Row 2: Trường Input - Giá trị chỉ cần chọn 1 trong list data từ outcome ví dụ: INPUT_FB_TECH_SUPPORT */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Input <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
               <select
-                value={branch}
-                onChange={(e) => setBranch(e.target.value)}
-                className="w-full h-9.5 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer"
+                value={inputOutput}
+                onChange={(e) => handleOutcomeChange(e.target.value)}
+                className="w-full h-9.5 px-3 pr-8 text-xs text-slate-800 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer appearance-none font-mono"
+                required
               >
-                <option value="">-- Tất cả chi nhánh / Toàn quốc --</option>
-                {CHAT_BRANCHES.map((b) => (
-                  <option key={b} value={b}>{b}</option>
+                {outcomeOptions.map((outcome) => (
+                  <option key={outcome} value={outcome}>
+                    {outcome}
+                  </option>
                 ))}
               </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
           </div>
 
@@ -743,8 +735,16 @@ function ChatRoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) 
   );
 }
 
-export function ChatRoutingModal({ isOpen, onClose, onSave, initialData }: ChatRoutingModalProps) {
+export function ChatRoutingModal({ isOpen, onClose, onSave, initialData, onNavigateToInputConfig }: ChatRoutingModalProps) {
   if (!isOpen) return null;
-  return <ChatRoutingModalForm key={initialData?.id || 'new'} initialData={initialData} onClose={onClose} onSave={onSave} />;
+  return (
+    <ChatRoutingModalForm 
+      key={initialData?.id || 'new'} 
+      initialData={initialData} 
+      onClose={onClose} 
+      onSave={onSave} 
+      onNavigateToInputConfig={onNavigateToInputConfig}
+    />
+  );
 }
 

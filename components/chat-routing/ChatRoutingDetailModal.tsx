@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, MessageSquare, Edit, Layers, Building2, Bot } from 'lucide-react';
+import { X, MessageSquare, Edit, Layers, Building2, Bot, Filter } from 'lucide-react';
 import { ChatRoutingConfigItem } from '@/lib/chat-routing-data';
 
 interface ChatRoutingDetailModalProps {
@@ -79,65 +79,13 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
             </div>
           </div>
 
-          {/* Chi nhánh (không bắt buộc) */}
+          {/* Trường Input - Giá trị outcome từ Cấu hình Input ví dụ: INPUT_FB_TECH_SUPPORT */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-slate-500" />
-              <span>Chi nhánh</span>
-              <span className="text-[11px] font-normal text-slate-400">(Không bắt buộc)</span>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Input
             </label>
-            <div className="w-full h-9.5 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded">
-              {item.branch ? (
-                <span className="inline-flex items-center gap-1 text-slate-800">
-                  <span className="w-2 h-2 rounded-full bg-orange-500"></span>
-                  {item.branch}
-                </span>
-              ) : (
-                <span className="text-slate-500 italic">Tất cả chi nhánh / Toàn quốc (Không giới hạn)</span>
-              )}
-            </div>
-          </div>
-
-          {/* Block: Nguồn tiếp nhận chat */}
-          <div className="bg-slate-50/80 p-3.5 rounded-lg border border-slate-200 space-y-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-800 flex items-center gap-1.5 mb-2">
-                <Layers className="w-3.5 h-3.5 text-[#f25621]" />
-                <span>Nguồn tiếp nhận chat ({item.chatSources?.length || item.intakeChannels?.length || 0} nguồn):</span>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {(item.chatSources && item.chatSources.length > 0) ? (
-                  item.chatSources.map((source) => (
-                    <span
-                      key={source}
-                      className="px-3 py-1.5 rounded bg-white text-slate-800 text-xs font-medium border border-orange-200 shadow-2xs inline-flex items-center gap-1.5"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#f25621]" />
-                      <span>{source}</span>
-                    </span>
-                  ))
-                ) : (item.intakeChannels && item.intakeChannels.length > 0) ? (
-                  item.intakeChannels.map((ch) => (
-                    <span
-                      key={ch}
-                      className="px-3 py-1.5 rounded bg-white text-slate-800 text-xs font-medium border border-orange-200 shadow-2xs inline-flex items-center gap-1.5"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#f25621]" />
-                      <span>{ch}</span>
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-slate-400 italic">Mặc định tiếp nhận tất cả các kênh</span>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-200/70 flex items-center justify-between text-[11px] text-slate-500">
-              <span>Định tuyến tự động: <strong>Phân phối trực tiếp theo nguồn kênh tiếp nhận</strong></span>
-              <span className="text-emerald-700 font-medium flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                Đang sẵn sàng nhận tin nhắn
-              </span>
+            <div className="w-full h-9.5 px-3 flex items-center text-xs font-mono text-slate-800 bg-slate-50 border border-slate-200 rounded">
+              {item.inputOutput || 'INPUT_FB_TECH_SUPPORT'}
             </div>
           </div>
 

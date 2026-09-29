@@ -19,16 +19,17 @@ import {
   Bot,
   Layers,
   Calendar,
-  Building2,
   Share2,
-  Clock
+  Clock,
+  ArrowRight,
+  Filter
 } from 'lucide-react';
 import { 
   ChatRoutingConfigItem, 
   INITIAL_CHAT_ROUTING_CONFIGS, 
   CHAT_FALLBACK_OPTIONS,
   CHAT_SOURCES,
-  CHAT_BRANCHES
+  CHAT_OUTPUT_OPTIONS
 } from '@/lib/chat-routing-data';
 import { ChatRoutingModal } from './ChatRoutingModal';
 import { ChatRoutingDetailModal } from './ChatRoutingDetailModal';
@@ -36,12 +37,14 @@ import { DeleteConfirmModal } from '../call-routing/DeleteConfirmModal';
 
 interface ChatRoutingConfigViewProps {
   onSwitchToCallRouting?: () => void;
+  onSwitchToChatInputRouting?: () => void;
   onSwitchToSocialMedia?: () => void;
   onSwitchToAutoMessages?: () => void;
 }
 
 export function ChatRoutingConfigView({ 
   onSwitchToCallRouting, 
+  onSwitchToChatInputRouting,
   onSwitchToSocialMedia,
   onSwitchToAutoMessages
 }: ChatRoutingConfigViewProps) {
@@ -50,14 +53,14 @@ export function ChatRoutingConfigView({
   // Filter states
   const [filterQueue, setFilterQueue] = useState<string>('Tất cả');
   const [filterSource, setFilterSource] = useState<string>('Tất cả');
-  const [filterBranch, setFilterBranch] = useState<string>('Tất cả');
+  const [filterOutput, setFilterOutput] = useState<string>('Tất cả');
   const [filterVIP, setFilterVIP] = useState<string>('Tất cả');
   const [filterStandard, setFilterStandard] = useState<string>('Tất cả');
   const [filterFallback, setFilterFallback] = useState<string>('Tất cả');
   const [filterDate, setFilterDate] = useState<string>('');
 
   // Sorting
-  type SortField = 'queueName' | 'queueCode' | 'branch' | 'routingVIP' | 'routingStandard' | 'fallbackAction' | 'createdAt';
+  type SortField = 'queueName' | 'queueCode' | 'inputOutput' | 'routingVIP' | 'routingStandard' | 'fallbackAction' | 'createdAt';
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -99,7 +102,7 @@ export function ChatRoutingConfigView({
   const handleResetFilters = () => {
     setFilterQueue('Tất cả');
     setFilterSource('Tất cả');
-    setFilterBranch('Tất cả');
+    setFilterOutput('Tất cả');
     setFilterVIP('Tất cả');
     setFilterStandard('Tất cả');
     setFilterFallback('Tất cả');
@@ -113,6 +116,15 @@ export function ChatRoutingConfigView({
     return Array.from(new Set(dataList.map(item => item.queueName || item.name || item.queueCode)));
   }, [dataList]);
 
+  // Distinct input outcome list for filter
+  const uniqueInputOptions = useMemo(() => {
+    const set = new Set<string>();
+    dataList.forEach(item => {
+      if (item.inputOutput) set.add(item.inputOutput);
+    });
+    return Array.from(set);
+  }, [dataList]);
+
   // Filtered & Sorted Data
   const filteredData = useMemo(() => {
     return dataList.filter(item => {
@@ -122,9 +134,9 @@ export function ChatRoutingConfigView({
         const itemSources = item.chatSources || item.intakeChannels || [];
         if (!itemSources.includes(filterSource)) return false;
       }
-      if (filterBranch !== 'Tất cả') {
-        if (filterBranch === 'Toàn quốc' && item.branch) return false;
-        if (filterBranch !== 'Toàn quốc' && item.branch !== filterBranch) return false;
+      if (filterOutput !== 'Tất cả') {
+        const itemOutput = item.inputOutput || '';
+        if (!itemOutput.includes(filterOutput)) return false;
       }
       if (filterVIP !== 'Tất cả' && item.routingVIP !== filterVIP) return false;
       if (filterStandard !== 'Tất cả' && item.routingStandard !== filterStandard) return false;
@@ -155,7 +167,7 @@ export function ChatRoutingConfigView({
       if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [dataList, filterQueue, filterSource, filterBranch, filterVIP, filterStandard, filterFallback, filterDate, sortField, sortDirection]);
+  }, [dataList, filterQueue, filterSource, filterOutput, filterVIP, filterStandard, filterFallback, filterDate, sortField, sortDirection]);
 
   // Paginated Data
   const totalItems = filteredData.length;
@@ -232,6 +244,16 @@ export function ChatRoutingConfigView({
             <span>Chat Routing (Tin nhắn)</span>
             <span className="w-2 h-2 rounded-full bg-[#f25621] ml-0.5 animate-pulse" />
           </button>
+          {onSwitchToChatInputRouting && (
+            <button
+              onClick={onSwitchToChatInputRouting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
+              title="Cấu hình Input Chat Routing (Type, Value, Output)"
+            >
+              <Filter className="w-3.5 h-3.5 text-[#f25621]" />
+              <span>Cấu hình Input Chat</span>
+            </button>
+          )}
           {onSwitchToSocialMedia && (
             <button
               onClick={onSwitchToSocialMedia}
@@ -257,7 +279,7 @@ export function ChatRoutingConfigView({
       {/* Main Card Container */}
       <div className="bg-white rounded-md shadow-xs border border-slate-200 p-4 sm:p-5 space-y-4">
         
-        {/* Top Header: Title and "+ Tạo mới" Button */}
+        {/* Top Header: Title and Buttons */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-100">
           <div>
             <h1 className="text-base sm:text-lg font-bold text-[#f25621] tracking-wide uppercase flex items-center gap-2">
@@ -269,17 +291,30 @@ export function ChatRoutingConfigView({
             </p>
           </div>
 
-          <button
-            id="btn-create-new-chat-routing"
-            onClick={() => {
-              setSelectedItem(null);
-              setIsCreateEditOpen(true);
-            }}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#f25621] hover:bg-[#e04815] text-white text-xs font-semibold rounded-md transition-colors shadow-2xs cursor-pointer self-start sm:self-auto"
-          >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Tạo mới</span>
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            {onSwitchToChatInputRouting && (
+              <button
+                type="button"
+                onClick={onSwitchToChatInputRouting}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-md transition-colors cursor-pointer border border-slate-200 shadow-2xs"
+                title="Cấu hình điều kiện Input (Type, Value, Output)"
+              >
+                <Filter className="w-3.5 h-3.5 text-[#f25621]" />
+                <span>Cấu hình Input Chat</span>
+              </button>
+            )}
+            <button
+              id="btn-create-new-chat-routing"
+              onClick={() => {
+                setSelectedItem(null);
+                setIsCreateEditOpen(true);
+              }}
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#f25621] hover:bg-[#e04815] text-white text-xs font-semibold rounded-md transition-colors shadow-2xs cursor-pointer"
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              <span>Tạo mới</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter / Search Form */}
@@ -334,24 +369,23 @@ export function ChatRoutingConfigView({
               </div>
             </div>
 
-            {/* Lọc theo Chi nhánh */}
+            {/* Lọc theo Input */}
             <div>
               <label className="block text-xs font-normal text-slate-700 mb-1.5">
-                Chi nhánh
+                Input
               </label>
               <div className="relative">
                 <select
-                  value={filterBranch}
+                  value={filterOutput}
                   onChange={(e) => {
-                    setFilterBranch(e.target.value);
+                    setFilterOutput(e.target.value);
                     setCurrentPage(1);
                   }}
                   className="w-full appearance-none bg-white text-xs text-slate-700 border border-slate-300 rounded px-3 py-2 pr-8 focus:outline-none focus:border-[#f25621] cursor-pointer shadow-2xs truncate"
                 >
-                  <option value="Tất cả">Tất cả chi nhánh</option>
-                  <option value="Toàn quốc">Toàn quốc / Chung</option>
-                  {CHAT_BRANCHES.map((b) => (
-                    <option key={b} value={b}>{b}</option>
+                  <option value="Tất cả">Tất cả Input</option>
+                  {uniqueInputOptions.map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
                   ))}
                 </select>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -493,21 +527,13 @@ export function ChatRoutingConfigView({
                   </div>
                 </th>
 
-                <th className="py-2.5 px-3 min-w-[220px]">
-                  <div className="flex items-center gap-1">
-                    <Layers className="w-3.5 h-3.5 text-[#f25621]" />
-                    <span>Nguồn tiếp nhận chat</span>
-                  </div>
-                </th>
-
                 <th 
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors group min-w-[150px]"
-                  onClick={() => handleSort('branch')}
+                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors group min-w-[200px]"
+                  onClick={() => handleSort('inputOutput')}
                 >
-                  <div className="flex items-center gap-1">
-                    <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Chi nhánh</span>
-                    {renderSortIcon('branch')}
+                  <div className="flex items-center">
+                    <span>Input</span>
+                    {renderSortIcon('inputOutput')}
                   </div>
                 </th>
 
@@ -612,45 +638,11 @@ export function ChatRoutingConfigView({
                       </div>
                     </td>
 
-                    {/* Nguồn tiếp nhận chat */}
-                    <td className="py-2.5 px-3">
-                      <div className="flex flex-wrap gap-1 max-w-xs">
-                        {(item.chatSources && item.chatSources.length > 0) ? (
-                          item.chatSources.map((source) => (
-                            <span 
-                              key={source}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#f25621]" />
-                              {source}
-                            </span>
-                          ))
-                        ) : (item.intakeChannels && item.intakeChannels.length > 0) ? (
-                          item.intakeChannels.map((ch) => (
-                            <span 
-                              key={ch}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200 shadow-2xs"
-                            >
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#f25621]" />
-                              {ch}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-[11px] text-slate-400 italic">Tất cả nguồn</span>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Chi nhánh */}
+                    {/* Cột Input - hiển thị 1 giá trị outcome ví dụ: INPUT_FB_TECH_SUPPORT */}
                     <td className="py-2.5 px-3 whitespace-nowrap">
-                      {item.branch ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-orange-50/80 text-orange-900 border border-orange-200">
-                          <Building2 className="w-3 h-3 text-[#f25621]" />
-                          <span>{item.branch}</span>
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-slate-400 italic">Toàn quốc (Chung)</span>
-                      )}
+                      <span className="font-mono text-xs font-semibold text-slate-800">
+                        {item.inputOutput || 'INPUT_FB_TECH_SUPPORT'}
+                      </span>
                     </td>
 
                     {/* Routing VIP */}
@@ -801,6 +793,7 @@ export function ChatRoutingConfigView({
         }}
         onSave={handleSaveItem}
         initialData={selectedItem}
+        onNavigateToInputConfig={onSwitchToChatInputRouting}
       />
 
       {/* Chat Routing Detail Modal */}

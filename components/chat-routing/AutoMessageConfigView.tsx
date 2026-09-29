@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   Clock, 
   MessageSquare, 
@@ -6,148 +8,319 @@ import {
   RotateCcw, 
   PhoneCall, 
   Share2, 
-  AlertTriangle, 
-  Send, 
   CheckCircle2, 
-  Smartphone, 
-  Bot
+  Plus, 
+  Trash2, 
+  Search, 
+  X, 
+  Copy, 
+  Filter, 
+  ChevronDown
 } from 'lucide-react';
 import { 
-  AutoMessageConfig, 
-  INITIAL_AUTO_MESSAGE_CONFIG, 
-  AVAILABLE_VARIABLES_WAIT_SLA, 
-  AVAILABLE_VARIABLES_INACTIVITY,
-  AVAILABLE_VARIABLES_OVERLOAD
+  AutoMessageCaseItem, 
+  AutoMessageTriggerType,
+  INITIAL_AUTO_MESSAGE_CASES,
+  AUTO_MESSAGE_CATEGORIES,
+  ALL_AUTO_MESSAGE_CHANNELS,
+  TRIGGER_TYPE_OPTIONS,
+  COMMON_AUTO_MESSAGE_VARIABLES
 } from '@/lib/auto-message-data';
 
 interface AutoMessageConfigViewProps {
   onSwitchToCallRouting?: () => void;
   onSwitchToChatRouting?: () => void;
+  onSwitchToChatInputRouting?: () => void;
   onSwitchToSocialMedia?: () => void;
+}
+
+function ToggleSwitch({ 
+  checked, 
+  onChange, 
+  size = 'md' 
+}: { 
+  checked: boolean; 
+  onChange: (v: boolean) => void; 
+  size?: 'sm' | 'md';
+}) {
+  const isSm = size === 'sm';
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(!checked);
+      }}
+      className={`relative inline-flex shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+        isSm ? 'h-4 w-7' : 'h-5 w-9'
+      } ${checked ? 'bg-[#f25621]' : 'bg-slate-300'}`}
+    >
+      <span
+        className={`pointer-events-none inline-block transform rounded-full bg-white shadow-xs ring-0 transition duration-200 ease-in-out ${
+          isSm ? (checked ? 'h-3 w-3 translate-x-3' : 'h-3 w-3 translate-x-0') : (checked ? 'h-4 w-4 translate-x-4' : 'h-4 w-4 translate-x-0')
+        }`}
+      />
+    </button>
+  );
 }
 
 export function AutoMessageConfigView({
   onSwitchToCallRouting,
   onSwitchToChatRouting,
+  onSwitchToChatInputRouting,
   onSwitchToSocialMedia
 }: AutoMessageConfigViewProps) {
-  const [config, setConfig] = useState<AutoMessageConfig>(INITIAL_AUTO_MESSAGE_CONFIG);
-  const [activeTab, setActiveTab] = useState<'WAIT_SLA' | 'QUEUE_OVERLOAD' | 'INACTIVITY_CLOSE'>('WAIT_SLA');
+  // Chỉ lưu và hiển thị đúng 3 data sample theo yêu cầu
+  const [cases, setCases] = useState<AutoMessageCaseItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('unispace_auto_messages_v3_clean');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Giới hạn dữ liệu mẫu cũ nếu vượt quá 3
+            if (parsed.length > 3 && parsed.some(p => p.id === 'CSAT_SURVEY' || p.id === 'QUEUE_OVERLOAD' || p.id === 'AUTO_CLOSE')) {
+              const trimmed = INITIAL_AUTO_MESSAGE_CASES.slice(0, 3);
+              localStorage.setItem('unispace_auto_messages_v3_clean', JSON.stringify(trimmed));
+              return trimmed;
+            }
+            return parsed;
+          }
+        }
+      } catch {
+        // fallback
+      }
+    }
+    return INITIAL_AUTO_MESSAGE_CASES.slice(0, 3);
+  });
+
+  const [selectedCaseId, setSelectedCaseId] = useState<string>(() => {
+    return INITIAL_AUTO_MESSAGE_CASES[0]?.id || 'WELCOME_MSG';
+  });
+
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Simulator Preview State
-  const [simMode, setSimMode] = useState<'wait_standard' | 'wait_vip' | 'overload' | 'inactivity'>('wait_standard');
+  // Modal thêm kịch bản mới
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newCaseName, setNewCaseName] = useState('');
+  const [newCaseCategory, setNewCaseCategory] = useState<string>(AUTO_MESSAGE_CATEGORIES[1]);
+  const [newCaseTriggerType, setNewCaseTriggerType] = useState<AutoMessageTriggerType>('WAIT_TIMEOUT');
+  const [newCaseTriggerValue, setNewCaseTriggerValue] = useState<number>(5);
+  const [newCaseTriggerUnit, setNewCaseTriggerUnit] = useState<'giây' | 'phút' | 'giờ' | 'khách'>('phút');
+  const [newCaseTimeFrom, setNewCaseTimeFrom] = useState('22:00');
+  const [newCaseTimeTo, setNewCaseTimeTo] = useState('08:00');
+  const [newCaseChannels, setNewCaseChannels] = useState<string[]>(['Facebook', 'Zalo OA', 'Website LiveChat']);
+  const [newCaseMessage, setNewCaseMessage] = useState('Xin chào {TEN_KHACH_HANG}, hệ thống đã nhận được tin nhắn của bạn.');
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleSave = () => {
-    setConfig(prev => ({
-      ...prev,
-      updatedAt: new Date().toLocaleString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      })
-    }));
-    showToast('Đã lưu cấu hình tin nhắn tự động thành công!');
+  const selectedCase = useMemo(() => {
+    const found = cases.find(c => c.id === selectedCaseId);
+    return found || cases[0] || null;
+  }, [cases, selectedCaseId]);
+
+  const persistCases = (updatedCases: AutoMessageCaseItem[]) => {
+    setCases(updatedCases);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('unispace_auto_messages_v3_clean', JSON.stringify(updatedCases));
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const updateCurrentCase = (updater: (prev: AutoMessageCaseItem) => AutoMessageCaseItem) => {
+    if (!selectedCase) return;
+    const nextCases = cases.map(c => c.id === selectedCase.id ? updater(c) : c);
+    persistCases(nextCases);
+  };
+
+  const handleToggleCase = (id: string, newEnabled: boolean) => {
+    const nextCases = cases.map(c => c.id === id ? { ...c, enabled: newEnabled } : c);
+    persistCases(nextCases);
+    showToast(newEnabled ? 'Đã kích hoạt' : 'Đã tạm dừng');
+  };
+
+  const handleDeleteCase = (id: string, name: string) => {
+    if (cases.length <= 1) {
+      showToast('Cần giữ lại ít nhất 1 kịch bản!');
+      return;
+    }
+    if (confirm(`Xóa kịch bản "${name}"?`)) {
+      const nextCases = cases.filter(c => c.id !== id);
+      persistCases(nextCases);
+      if (selectedCaseId === id) {
+        setSelectedCaseId(nextCases[0]?.id || '');
+      }
+      showToast('Đã xóa kịch bản');
+    }
+  };
+
+  const handleDuplicateCase = (caseItem: AutoMessageCaseItem) => {
+    const newId = `CASE_${Date.now()}`;
+    const duplicated: AutoMessageCaseItem = {
+      ...caseItem,
+      id: newId,
+      code: `AUTO_${Date.now().toString(36).toUpperCase()}`,
+      name: `${caseItem.name} (Bản sao)`,
+      priority: cases.length + 1,
+      isCustom: true
+    };
+    const nextCases = [...cases, duplicated];
+    persistCases(nextCases);
+    setSelectedCaseId(newId);
+    showToast('Đã nhân bản kịch bản');
   };
 
   const handleResetDefaults = () => {
-    if (confirm('Bạn có chắc chắn muốn khôi phục toàn bộ cấu hình về mặc định ban đầu?')) {
-      setConfig(INITIAL_AUTO_MESSAGE_CONFIG);
-      showToast('Đã khôi phục cấu hình về mặc định ban đầu');
+    if (confirm('Khôi phục về 3 kịch bản mặc định?')) {
+      const resetList = INITIAL_AUTO_MESSAGE_CASES.slice(0, 3);
+      persistCases(resetList);
+      setSelectedCaseId(resetList[0]?.id || 'WELCOME_MSG');
+      showToast('Đã khôi phục 3 kịch bản mẫu');
     }
   };
 
-  // Helper to insert variables into textareas
-  const insertVariable = (
-    field: 'standardMessage' | 'vipMessage' | 'queueOverloadMessage' | 'inactivityMessage',
-    variable: string
-  ) => {
-    if (field === 'standardMessage' || field === 'vipMessage') {
-      setConfig(prev => ({
-        ...prev,
-        waitTimeSla: {
-          ...prev.waitTimeSla,
-          [field]: prev.waitTimeSla[field] + ' ' + variable
-        }
-      }));
-    } else if (field === 'queueOverloadMessage') {
-      setConfig(prev => ({
-        ...prev,
-        queueOverload: {
-          ...prev.queueOverload,
-          message: prev.queueOverload.message + ' ' + variable
-        }
-      }));
-    } else if (field === 'inactivityMessage') {
-      setConfig(prev => ({
-        ...prev,
-        inactivityClose: {
-          ...prev.inactivityClose,
-          message: prev.inactivityClose.message + ' ' + variable
-        }
-      }));
+  const handleInsertVariable = (variableCode: string) => {
+    if (!selectedCase) return;
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = selectedCase.message;
+      const before = text.substring(0, start);
+      const after = text.substring(end, text.length);
+      const newText = before + variableCode + after;
+      updateCurrentCase(c => ({ ...c, message: newText }));
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + variableCode.length, start + variableCode.length);
+      }, 50);
+    } else {
+      updateCurrentCase(c => ({ ...c, message: c.message + ' ' + variableCode }));
     }
-    showToast(`Đã thêm biến ${variable}`);
   };
 
-  const toggleChannel = (section: 'waitTimeSla' | 'queueOverload' | 'inactivityClose', channelName: string) => {
-    setConfig(prev => {
-      const currentList = prev[section].channels;
-      const nextList = currentList.includes(channelName)
-        ? currentList.filter(c => c !== channelName)
-        : [...currentList, channelName];
-      return {
-        ...prev,
-        [section]: {
-          ...prev[section],
-          channels: nextList
-        }
-      };
+  const handleToggleChannel = (channel: string) => {
+    if (!selectedCase) return;
+    const exists = selectedCase.channels.includes(channel);
+    const updatedChannels = exists
+      ? selectedCase.channels.filter(ch => ch !== channel)
+      : [...selectedCase.channels, channel];
+    
+    if (updatedChannels.length === 0) {
+      showToast('Cần chọn ít nhất 1 kênh!');
+      return;
+    }
+    updateCurrentCase(c => ({ ...c, channels: updatedChannels }));
+  };
+
+  const handleCreateNewCase = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCaseName.trim()) {
+      showToast('Vui lòng nhập tên kịch bản!');
+      return;
+    }
+
+    const typeConfig = TRIGGER_TYPE_OPTIONS.find(t => t.type === newCaseTriggerType);
+    let summary = typeConfig?.label || 'Kích hoạt theo cấu hình';
+    if (newCaseTriggerType === 'WAIT_TIMEOUT' || newCaseTriggerType === 'INACTIVITY_REMINDER' || newCaseTriggerType === 'AUTO_CLOSE') {
+      summary = `Sau ${newCaseTriggerValue} ${newCaseTriggerUnit}`;
+    } else if (newCaseTriggerType === 'QUEUE_OVERLOAD') {
+      summary = `Khi quá ${newCaseTriggerValue} khách`;
+    } else if (newCaseTriggerType === 'OFF_HOURS') {
+      summary = `Ngoài giờ: ${newCaseTimeFrom} - ${newCaseTimeTo}`;
+    }
+
+    const newId = `CASE_${Date.now()}`;
+    const newCaseItem: AutoMessageCaseItem = {
+      id: newId,
+      code: `AUTO_${Date.now().toString(36).toUpperCase()}`,
+      name: newCaseName.trim(),
+      description: newCaseName.trim(),
+      category: newCaseCategory,
+      enabled: true,
+      priority: cases.length + 1,
+      isCustom: true,
+      trigger: {
+        type: newCaseTriggerType,
+        typeLabel: typeConfig?.label || 'Tùy chọn',
+        value: newCaseTriggerValue,
+        unit: newCaseTriggerUnit,
+        timeFrom: newCaseTimeFrom,
+        timeTo: newCaseTimeTo,
+        summaryText: summary
+      },
+      message: newCaseMessage.trim() || 'Xin chào {TEN_KHACH_HANG}, hệ thống đã nhận được tin nhắn.',
+      channels: newCaseChannels.length > 0 ? newCaseChannels : ['Facebook', 'Zalo OA', 'Website LiveChat'],
+      variables: COMMON_AUTO_MESSAGE_VARIABLES.slice(0, 3)
+    };
+
+    const nextCases = [...cases, newCaseItem];
+    persistCases(nextCases);
+    setSelectedCaseId(newId);
+    setIsAddModalOpen(false);
+    setNewCaseName('');
+    showToast('Đã thêm kịch bản mới');
+  };
+
+  const filteredCases = useMemo(() => {
+    return cases.filter(item => {
+      if (selectedCategory !== 'Tất cả' && item.category !== selectedCategory) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        return item.name.toLowerCase().includes(q) || 
+               item.message.toLowerCase().includes(q) || 
+               item.trigger.summaryText.toLowerCase().includes(q);
+      }
+      return true;
     });
-  };
+  }, [cases, selectedCategory, searchQuery]);
 
-  // Replace variables for preview
-  const getRenderedPreviewText = (template: string, isVip: boolean = false) => {
-    let result = template;
-    result = result.replace(/{TEN_KHACH_HANG}/g, isVip ? 'Nguyễn Anh Tuấn (VIP)' : 'Nguyễn Văn An');
-    result = result.replace(/{THOI_GIAN_CHO}/g, `${isVip ? config.waitTimeSla.vipWaitMinutes : config.waitTimeSla.standardWaitMinutes} phút`);
-    result = result.replace(/{TEN_HANG_DOI}/g, 'Hỗ trợ Kỹ thuật & CSKH');
-    result = result.replace(/{THOI_GIAN_KHONG_TUONG_TAC}/g, `${config.inactivityClose.inactivityMinutes}`);
-    result = result.replace(/{TEN_AGENT}/g, 'Trần Minh Tâm (CSKH)');
-    result = result.replace(/{SO_LUONG_DANG_CHO}/g, '24');
-    result = result.replace(/{THOI_GIAN_DU_KIEN}/g, '15');
-    result = result.replace(/{HOTLINE}/g, '1900 6868');
-    return result;
-  };
+  const previewRenderedMessage = useMemo(() => {
+    if (!selectedCase) return '';
+    let text = selectedCase.message;
+    text = text.replace(/{TEN_KHACH_HANG}/g, 'Nguyễn Văn An');
+    text = text.replace(/{TEN_AGENT}/g, 'Lê Thanh Trúc');
+    text = text.replace(/{TEN_HANG_DOI}/g, 'Hỗ trợ Kỹ thuật');
+    text = text.replace(/{THOI_GIAN_CHO}/g, `${selectedCase.trigger.value || 5} phút`);
+    text = text.replace(/{GIO_LAM_VIEC}/g, '08:00 - 22:00');
+    text = text.replace(/{HOTLINE}/g, '1900 6868');
+    return text;
+  }, [selectedCase]);
 
   return (
     <div className="p-4 sm:p-6 space-y-4 max-w-[1600px] mx-auto animate-in fade-in duration-150">
       
       {/* Toast Feedback */}
       {toastMessage && (
-        <div className="fixed top-16 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-lg shadow-xl text-xs font-medium flex items-center gap-2 border border-slate-700 animate-in slide-in-from-top-2">
+        <div className="fixed top-16 right-6 z-50 bg-slate-900 text-white px-3.5 py-2 rounded-lg shadow-xl text-xs font-medium flex items-center gap-2 border border-slate-700 animate-in slide-in-from-top-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Breadcrumb & Submenu Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 sm:px-4 rounded-lg border border-slate-200">
+      {/* Breadcrumb & Navigation Submenu Switcher */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 sm:px-4 rounded-lg border border-slate-200 shadow-2xs">
         <div className="flex items-center gap-2 text-xs">
           <span className="text-slate-400">Tiếp nhận & phân phối /</span>
-          <span className="font-semibold text-slate-700">Cấu hình tin nhắn tự động</span>
+          <span className="font-semibold text-slate-800">Tin nhắn tự động</span>
         </div>
 
-        {/* Submenu Switcher Buttons */}
-        <div className="flex items-center p-0.5 bg-slate-100 rounded-md border border-slate-200">
+        {/* Submenu Switcher */}
+        <div className="flex items-center p-0.5 bg-slate-100 rounded-md border border-slate-200 text-xs">
           {onSwitchToCallRouting && (
             <button
               onClick={onSwitchToCallRouting}
@@ -165,6 +338,16 @@ export function AutoMessageConfigView({
             >
               <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
               <span>Chat Routing</span>
+            </button>
+          )}
+
+          {onSwitchToChatInputRouting && (
+            <button
+              onClick={onSwitchToChatInputRouting}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
+            >
+              <Filter className="w-3.5 h-3.5 text-slate-500" />
+              <span>Cấu hình Input Chat</span>
             </button>
           )}
 
@@ -187,765 +370,665 @@ export function AutoMessageConfigView({
         </div>
       </div>
 
-      {/* Main Header Card */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-[#f25621]" />
-            <span>Cấu hình Tin Nhắn Tự Động</span>
+      {/* Main Header Card with Actions */}
+      <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center text-[#f25621]">
+            <Clock className="w-5 h-5" />
+          </div>
+          <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
+            CẤU HÌNH TIN NHẮN TỰ ĐỘNG
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Thiết lập tin nhắn tự động khi quá thời gian chờ tiếp nhận (Thường / VIP), khi hàng đợi quá tải và khi xác nhận đóng phiên chat.
-          </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleResetDefaults}
-            className="px-3.5 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium transition-colors flex items-center gap-1.5 cursor-pointer"
-            title="Khôi phục mặc định"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium rounded transition-colors cursor-pointer"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
             <span>Mặc định</span>
           </button>
 
           <button
             type="button"
-            onClick={handleSave}
-            className="px-4 py-2 rounded-lg bg-[#f25621] hover:bg-[#e04510] text-white text-xs font-semibold shadow-xs hover:shadow transition-all flex items-center gap-1.5 cursor-pointer"
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#f25621] hover:bg-[#d94412] text-white text-xs font-semibold rounded transition-colors shadow-2xs cursor-pointer"
           >
-            <Check className="w-4 h-4 stroke-[2.5]" />
-            <span>Lưu cấu hình</span>
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Thêm kịch bản</span>
           </button>
         </div>
       </div>
 
-      {/* Main Grid: Form Left (7 cols) + Live Simulator Right (5 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        
-        {/* Left Column: Configuration Forms (7 cols) */}
-        <div className="lg:col-span-7 space-y-4">
-
-          {/* Navigation Tabs between Case 1, Case 2 and Case 3 */}
-          <div className="bg-white rounded-lg border border-slate-200 p-1 grid grid-cols-3 gap-1">
-            
-            {/* Tab 1: Quá thời gian chờ tiếp nhận */}
+      {/* Search and Category Filter Bar */}
+      <div className="bg-white rounded-lg border border-slate-200 p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-2xs">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Tìm kiếm kịch bản..."
+            className="w-full h-8.5 pl-8 pr-3 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#f25621] outline-none"
+          />
+          {searchQuery && (
             <button
-              onClick={() => {
-                setActiveTab('WAIT_SLA');
-                setSimMode('wait_standard');
-              }}
-              className={`py-2 px-3 rounded text-xs font-medium transition-all text-center cursor-pointer ${
-                activeTab === 'WAIT_SLA'
-                  ? 'bg-slate-800 text-white font-semibold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
-              1. Chờ tiếp nhận (SLA)
+              <X className="w-3.5 h-3.5" />
             </button>
-
-            {/* Tab 2: Quá tải hàng đợi */}
-            <button
-              onClick={() => {
-                setActiveTab('QUEUE_OVERLOAD');
-                setSimMode('overload');
-              }}
-              className={`py-2 px-3 rounded text-xs font-medium transition-all text-center cursor-pointer ${
-                activeTab === 'QUEUE_OVERLOAD'
-                  ? 'bg-slate-800 text-white font-semibold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              2. Quá tải hàng đợi
-            </button>
-
-            {/* Tab 3: Tự động xác nhận & Đóng phiên */}
-            <button
-              onClick={() => {
-                setActiveTab('INACTIVITY_CLOSE');
-                setSimMode('inactivity');
-              }}
-              className={`py-2 px-3 rounded text-xs font-medium transition-all text-center cursor-pointer ${
-                activeTab === 'INACTIVITY_CLOSE'
-                  ? 'bg-slate-800 text-white font-semibold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              3. Đóng phiên chat ({config.inactivityClose.inactivityMinutes}p)
-            </button>
-          </div>
-
-          {/* TAB 1: Quá thời gian chờ tiếp nhận (Có Khách Thường & Khách VIP, giao diện tối giản chuẩn mực) */}
-          {activeTab === 'WAIT_SLA' && (
-            <div className="bg-white rounded-lg border border-slate-200 p-5 space-y-4">
-              
-              {/* Header + Toggle */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                <div>
-                  <h2 className="text-sm font-bold text-slate-800">
-                    Tin nhắn tự động khi quá thời gian chờ tiếp nhận
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Hệ thống tự động gửi tin nhắn khi khách nhắn vào hàng đợi mà chưa có agent nhận phiên.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-600 font-medium">
-                    {config.waitTimeSla.enabled ? 'Đang bật' : 'Đang tắt'}
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={config.waitTimeSla.enabled}
-                      onChange={(e) => setConfig(prev => ({
-                        ...prev,
-                        waitTimeSla: { ...prev.waitTimeSla, enabled: e.target.checked }
-                      }))}
-                      className="sr-only peer"
-                    />
-                    <div className="w-8 h-4.5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[#f25621]"></div>
-                  </label>
-                </div>
-              </div>
-
-              {/* 1. KHỐI KHÁCH HÀNG THÔNG THƯỜNG (Tối giản) */}
-              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50/40 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                    Khách hàng thông thường
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-600">Thời gian chờ tối đa:</span>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="1"
-                        max="120"
-                        value={config.waitTimeSla.standardWaitMinutes}
-                        onChange={(e) => setConfig(prev => ({
-                          ...prev,
-                          waitTimeSla: { ...prev.waitTimeSla, standardWaitMinutes: Math.max(1, parseInt(e.target.value) || 1) }
-                        }))}
-                        className="w-16 h-8 px-2 text-center rounded border border-slate-300 bg-white font-bold text-xs text-[#f25621] outline-hidden focus:border-[#f25621]"
-                      />
-                      <span className="text-xs text-slate-500">phút</span>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-1 ml-1">
-                      {[5, 10, 15].map(m => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setConfig(prev => ({
-                            ...prev,
-                            waitTimeSla: { ...prev.waitTimeSla, standardWaitMinutes: m }
-                          }))}
-                          className={`px-2 py-0.5 rounded text-xs border cursor-pointer ${
-                            config.waitTimeSla.standardWaitMinutes === m 
-                              ? 'bg-slate-200 border-slate-400 font-semibold text-slate-800' 
-                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                          }`}
-                        >
-                          {m}p
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Nội dung tin nhắn tự động gửi cho khách thường:
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={config.waitTimeSla.standardMessage}
-                    onChange={(e) => setConfig(prev => ({
-                      ...prev,
-                      waitTimeSla: { ...prev.waitTimeSla, standardMessage: e.target.value }
-                    }))}
-                    className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-slate-300 focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] text-xs text-slate-800 bg-white transition-all outline-hidden leading-relaxed"
-                  />
-                  
-                  {/* Variable Badges */}
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    <span className="text-[11px] text-slate-400">Chèn biến:</span>
-                    {AVAILABLE_VARIABLES_WAIT_SLA.map(v => (
-                      <button
-                        key={v.code}
-                        type="button"
-                        onClick={() => insertVariable('standardMessage', v.code)}
-                        className="px-2 py-0.5 rounded bg-white border border-slate-200 hover:bg-slate-100 text-[11px] text-slate-700 font-mono transition-colors cursor-pointer"
-                        title={v.label}
-                      >
-                        {v.code}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* 2. KHỐI KHÁCH HÀNG VIP (Tối giản y hệt khách thường, không highlight, không icon vương miện) */}
-              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50/40 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-                    Khách hàng VIP
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-600">Thời gian chờ tối đa:</span>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="number"
-                        min="1"
-                        max="60"
-                        value={config.waitTimeSla.vipWaitMinutes}
-                        onChange={(e) => setConfig(prev => ({
-                          ...prev,
-                          waitTimeSla: { ...prev.waitTimeSla, vipWaitMinutes: Math.max(1, parseInt(e.target.value) || 1) }
-                        }))}
-                        className="w-16 h-8 px-2 text-center rounded border border-slate-300 bg-white font-bold text-xs text-[#f25621] outline-hidden focus:border-[#f25621]"
-                      />
-                      <span className="text-xs text-slate-500">phút</span>
-                    </div>
-                    <div className="hidden sm:flex items-center gap-1 ml-1">
-                      {[1, 3, 5].map(m => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => setConfig(prev => ({
-                            ...prev,
-                            waitTimeSla: { ...prev.waitTimeSla, vipWaitMinutes: m }
-                          }))}
-                          className={`px-2 py-0.5 rounded text-xs border cursor-pointer ${
-                            config.waitTimeSla.vipWaitMinutes === m 
-                              ? 'bg-slate-200 border-slate-400 font-semibold text-slate-800' 
-                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                          }`}
-                        >
-                          {m}p
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Nội dung tin nhắn tự động gửi cho khách VIP:
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={config.waitTimeSla.vipMessage}
-                    onChange={(e) => setConfig(prev => ({
-                      ...prev,
-                      waitTimeSla: { ...prev.waitTimeSla, vipMessage: e.target.value }
-                    }))}
-                    className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-slate-300 focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] text-xs text-slate-800 bg-white transition-all outline-hidden leading-relaxed"
-                  />
-                  
-                  {/* Variable Badges */}
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    <span className="text-[11px] text-slate-400">Chèn biến:</span>
-                    {AVAILABLE_VARIABLES_WAIT_SLA.map(v => (
-                      <button
-                        key={v.code}
-                        type="button"
-                        onClick={() => insertVariable('vipMessage', v.code)}
-                        className="px-2 py-0.5 rounded bg-white border border-slate-200 hover:bg-slate-100 text-[11px] text-slate-700 font-mono transition-colors cursor-pointer"
-                        title={v.label}
-                      >
-                        {v.code}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Kênh áp dụng */}
-              <div className="pt-2 border-t border-slate-200">
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Áp dụng cho các kênh tiếp nhận chat:
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {['Facebook', 'Zalo OA', 'Website LiveChat', 'ZBS', 'SMS'].map(channel => {
-                    const isChecked = config.waitTimeSla.channels.includes(channel);
-                    return (
-                      <button
-                        key={channel}
-                        type="button"
-                        onClick={() => toggleChannel('waitTimeSla', channel)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
-                          isChecked
-                            ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
-                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${isChecked ? 'bg-[#f25621]' : 'bg-slate-300'}`} />
-                        <span>{channel}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </div>
           )}
-
-          {/* TAB 2: Quá tải hàng đợi */}
-          {activeTab === 'QUEUE_OVERLOAD' && (
-            <div className="bg-white rounded-lg border border-slate-200 p-5 space-y-4">
-              
-              {/* Header + Toggle */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                <div>
-                  <h2 className="text-sm font-bold text-slate-800">
-                    Tin nhắn tự động khi Hàng đợi quá tải
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Hệ thống tự động thông báo khi số lượng khách chờ tiếp nhận vượt quá ngưỡng quy định.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-600 font-medium">
-                    {config.queueOverload.enabled ? 'Đang bật' : 'Đang tắt'}
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={config.queueOverload.enabled}
-                      onChange={(e) => setConfig(prev => ({
-                        ...prev,
-                        queueOverload: { ...prev.queueOverload, enabled: e.target.checked }
-                      }))}
-                      className="sr-only peer"
-                    />
-                    <div className="w-8 h-4.5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[#f25621]"></div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Textarea Mẫu tin nhắn */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nội dung tin nhắn thông báo khi quá tải:
-                </label>
-                <textarea
-                  rows={3}
-                  value={config.queueOverload.message}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    queueOverload: { ...prev.queueOverload, message: e.target.value }
-                  }))}
-                  className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-slate-300 focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] text-xs text-slate-800 bg-white transition-all outline-hidden leading-relaxed"
-                />
-
-                {/* Variables */}
-                <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                  <span className="text-[11px] text-slate-400">Chèn biến:</span>
-                  {AVAILABLE_VARIABLES_OVERLOAD.map(v => (
-                    <button
-                      key={v.code}
-                      type="button"
-                      onClick={() => insertVariable('queueOverloadMessage', v.code)}
-                      className="px-2 py-0.5 rounded bg-slate-50 border border-slate-200 hover:bg-slate-100 text-[11px] text-slate-700 font-mono transition-colors cursor-pointer"
-                      title={v.label}
-                    >
-                      {v.code}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Kênh áp dụng */}
-              <div className="pt-2 border-t border-slate-200">
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Áp dụng cho các kênh tiếp nhận chat:
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {['Facebook', 'Zalo OA', 'Website LiveChat', 'ZBS', 'SMS'].map(channel => {
-                    const isChecked = config.queueOverload.channels.includes(channel);
-                    return (
-                      <button
-                        key={channel}
-                        type="button"
-                        onClick={() => toggleChannel('queueOverload', channel)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
-                          isChecked
-                            ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
-                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${isChecked ? 'bg-[#f25621]' : 'bg-slate-300'}`} />
-                        <span>{channel}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </div>
-          )}
-
-          {/* TAB 3: Đóng phiên không tương tác */}
-          {activeTab === 'INACTIVITY_CLOSE' && (
-            <div className="bg-white rounded-lg border border-slate-200 p-5 space-y-4">
-              
-              {/* Header + Toggle */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-                <div>
-                  <h2 className="text-sm font-bold text-slate-800">
-                    Tin nhắn tự động xác nhận đóng phiên chat
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Hệ thống tự động nhắn ra thông báo đóng phiên khi quá thời gian không nhận được tin nhắn từ khách hàng.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-600 font-medium">
-                    {config.inactivityClose.enabled ? 'Đang bật' : 'Đang tắt'}
-                  </span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={config.inactivityClose.enabled}
-                      onChange={(e) => setConfig(prev => ({
-                        ...prev,
-                        inactivityClose: { ...prev.inactivityClose, enabled: e.target.checked }
-                      }))}
-                      className="sr-only peer"
-                    />
-                    <div className="w-8 h-4.5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-[#f25621]"></div>
-                  </label>
-                </div>
-              </div>
-
-              {/* Input Thời gian không tương tác */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 py-1">
-                <label className="text-xs font-semibold text-slate-700">
-                  Thời gian không tương tác tính từ tin nhắn cuối cùng:
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    max="180"
-                    value={config.inactivityClose.inactivityMinutes}
-                    onChange={(e) => setConfig(prev => ({
-                      ...prev,
-                      inactivityClose: { ...prev.inactivityClose, inactivityMinutes: Math.max(1, parseInt(e.target.value) || 1) }
-                    }))}
-                    className="w-16 h-8 px-2 text-center rounded border border-slate-300 bg-white font-bold text-xs text-[#f25621] outline-hidden focus:border-[#f25621]"
-                  />
-                  <span className="text-xs text-slate-500">phút</span>
-                  <div className="flex items-center gap-1 ml-1">
-                    {[5, 10, 15, 30].map(m => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => setConfig(prev => ({
-                          ...prev,
-                          inactivityClose: { ...prev.inactivityClose, inactivityMinutes: m }
-                        }))}
-                        className={`px-2 py-1 rounded text-xs border cursor-pointer ${
-                          config.inactivityClose.inactivityMinutes === m 
-                            ? 'bg-slate-100 border-slate-400 font-semibold text-slate-800' 
-                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                        }`}
-                      >
-                        {m}p
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Textarea Mẫu tin nhắn */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Nội dung tin nhắn xác nhận đóng phiên:
-                </label>
-                <textarea
-                  rows={3}
-                  value={config.inactivityClose.message}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    inactivityClose: { ...prev.inactivityClose, message: e.target.value }
-                  }))}
-                  className="w-full p-2.5 rounded-lg border border-slate-200 hover:border-slate-300 focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] text-xs text-slate-800 bg-white transition-all outline-hidden leading-relaxed"
-                />
-
-                {/* Variables */}
-                <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                  <span className="text-[11px] text-slate-400">Chèn biến:</span>
-                  {AVAILABLE_VARIABLES_INACTIVITY.map(v => (
-                    <button
-                      key={v.code}
-                      type="button"
-                      onClick={() => insertVariable('inactivityMessage', v.code)}
-                      className="px-2 py-0.5 rounded bg-slate-50 border border-slate-200 hover:bg-slate-100 text-[11px] text-slate-700 font-mono transition-colors cursor-pointer"
-                      title={v.label}
-                    >
-                      {v.code}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Kênh áp dụng */}
-              <div className="pt-2 border-t border-slate-200">
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Áp dụng cho các kênh tiếp nhận chat:
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {['Facebook', 'Zalo OA', 'Website LiveChat', 'ZBS'].map(channel => {
-                    const isChecked = config.inactivityClose.channels.includes(channel);
-                    return (
-                      <button
-                        key={channel}
-                        type="button"
-                        onClick={() => toggleChannel('inactivityClose', channel)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
-                          isChecked
-                            ? 'bg-slate-100 border-slate-400 text-slate-900 font-semibold'
-                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
-                        }`}
-                      >
-                        <span className={`w-1.5 h-1.5 rounded-full ${isChecked ? 'bg-[#f25621]' : 'bg-slate-300'}`} />
-                        <span>{channel}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </div>
-          )}
-
         </div>
 
-        {/* Right Column: Live Chat Simulator Preview (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-5 flex flex-col h-full sticky top-4">
-            
-            {/* Header Simulator */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <Smartphone className="w-4 h-4 text-slate-500" />
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Mô phỏng Giao diện Khách hàng
-                </span>
-              </div>
+        <div className="flex items-center gap-1.5 overflow-x-auto">
+          {AUTO_MESSAGE_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-2.5 py-1 rounded text-xs whitespace-nowrap cursor-pointer border transition-colors ${
+                selectedCategory === cat
+                  ? 'bg-slate-800 text-white border-slate-800 font-medium'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
 
-              {/* Mode switch */}
-              <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-md text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSimMode('wait_standard');
-                    setActiveTab('WAIT_SLA');
-                  }}
-                  className={`px-2 py-1 rounded font-medium transition-colors cursor-pointer ${
-                    simMode === 'wait_standard' ? 'bg-white text-slate-900 font-semibold shadow-xs' : 'text-slate-600'
-                  }`}
-                >
-                  Khách thường
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSimMode('wait_vip');
-                    setActiveTab('WAIT_SLA');
-                  }}
-                  className={`px-2 py-1 rounded font-medium transition-colors cursor-pointer ${
-                    simMode === 'wait_vip' ? 'bg-white text-slate-900 font-semibold shadow-xs' : 'text-slate-600'
-                  }`}
-                >
-                  Khách VIP
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSimMode('overload');
-                    setActiveTab('QUEUE_OVERLOAD');
-                  }}
-                  className={`px-2 py-1 rounded font-medium transition-colors cursor-pointer ${
-                    simMode === 'overload' ? 'bg-white text-slate-900 font-semibold shadow-xs' : 'text-slate-600'
-                  }`}
-                >
-                  Quá tải
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSimMode('inactivity');
-                    setActiveTab('INACTIVITY_CLOSE');
-                  }}
-                  className={`px-2 py-1 rounded font-medium transition-colors cursor-pointer ${
-                    simMode === 'inactivity' ? 'bg-white text-slate-900 font-semibold shadow-xs' : 'text-slate-600'
-                  }`}
-                >
-                  Đóng phiên
-                </button>
-              </div>
-            </div>
+        <div className="text-xs text-slate-500 shrink-0">
+          Tổng: <span className="font-semibold text-slate-800">{cases.length}</span> kịch bản
+        </div>
+      </div>
 
-            {/* Chat Device Container */}
-            <div className="mt-3 flex-1 flex flex-col bg-slate-50 rounded-lg border border-slate-200 overflow-hidden shadow-inner min-h-[460px]">
+      {/* Bố cục 2 cột: Danh sách (Trái) & Chi tiết (Phải) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        
+        {/* CỘT TRÁI (40%): Danh sách kịch bản gọn gàng */}
+        <div className="lg:col-span-5 space-y-2">
+          {filteredCases.map((item, idx) => {
+            const isSelected = selectedCase?.id === item.id;
+            return (
+              <div
+                key={item.id}
+                onClick={() => setSelectedCaseId(item.id)}
+                className={`p-3 rounded-lg border transition-all cursor-pointer bg-white ${
+                  isSelected
+                    ? 'border-[#f25621] ring-1 ring-[#f25621] shadow-xs'
+                    : 'border-slate-200 hover:border-slate-300 shadow-2xs'
+                }`}
+              >
+                {/* Dòng 1: STT, Tên kịch bản & Toggle */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="w-5 h-5 rounded bg-slate-100 text-slate-600 text-[11px] font-bold flex items-center justify-center shrink-0">
+                      {idx + 1}
+                    </span>
+                    <span className="text-xs font-bold text-slate-900 truncate">
+                      {item.name}
+                    </span>
+                  </div>
+
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <ToggleSwitch
+                      size="sm"
+                      checked={item.enabled}
+                      onChange={(val) => handleToggleCase(item.id, val)}
+                    />
+                  </div>
+                </div>
+
+                {/* Dòng 2: Điều kiện kích hoạt & Thao tác */}
+                <div className="mt-2 flex items-center justify-between text-[11px]">
+                  <div className="flex items-center gap-1.5 text-slate-600 truncate">
+                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 font-medium">
+                      {item.trigger.summaryText}
+                    </span>
+                    <span className="text-slate-400">•</span>
+                    <span className="text-slate-500">{item.category}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => handleDuplicateCase(item)}
+                      className="p-1 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded"
+                      title="Nhân bản"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCase(item.id, item.name)}
+                      className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                      title="Xóa"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            className="w-full py-2 border border-dashed border-slate-300 hover:border-[#f25621] hover:bg-orange-50/20 text-slate-600 hover:text-[#f25621] rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+          >
+            <Plus className="w-3.5 h-3.5 text-[#f25621]" />
+            <span>Thêm kịch bản (+)</span>
+          </button>
+        </div>
+
+        {/* CỘT PHẢI (60%): Chi tiết & Form chỉnh sửa tinh gọn */}
+        <div className="lg:col-span-7">
+          {selectedCase && (
+            <div className="bg-white rounded-lg border border-slate-200 shadow-2xs p-4 sm:p-5 space-y-4">
               
-              {/* Fake Chat Window Header */}
-              <div className="bg-slate-800 text-white px-3.5 py-2.5 flex items-center justify-between">
+              {/* Header chi tiết */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-[#f25621] flex items-center justify-center text-[10px] font-bold">
-                    CX
+                  <h2 className="text-sm font-bold text-slate-900">
+                    {selectedCase.name}
+                  </h2>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600">
+                    {selectedCase.code}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <ToggleSwitch
+                    checked={selectedCase.enabled}
+                    onChange={(val) => handleToggleCase(selectedCase.id, val)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCase(selectedCase.id, selectedCase.name)}
+                    className="p-1.5 border border-slate-200 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded transition-colors"
+                    title="Xóa kịch bản"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Tên & Danh mục */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-8">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Tên kịch bản <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={selectedCase.name}
+                    onChange={(e) => updateCurrentCase(c => ({ ...c, name: e.target.value }))}
+                    className="w-full h-8.5 px-3 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none"
+                  />
+                </div>
+
+                <div className="sm:col-span-4">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Danh mục <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedCase.category}
+                      onChange={(e) => updateCurrentCase(c => ({ ...c, category: e.target.value }))}
+                      className="w-full h-8.5 px-3 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none appearance-none cursor-pointer"
+                    >
+                      {AUTO_MESSAGE_CATEGORIES.filter(c => c !== 'Tất cả').map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
-                  <div>
-                    <div className="text-xs font-semibold leading-none">Hỗ trợ Trực tuyến UniSpace</div>
-                    <div className="text-[10px] text-slate-300 mt-0.5">
-                      Hệ thống tự động sẵn sàng
-                    </div>
+                </div>
+              </div>
+
+              {/* Điều kiện kích hoạt */}
+              <div className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/50 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-800 mb-1">
+                    Điều kiện kích hoạt <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={selectedCase.trigger.type}
+                      onChange={(e) => {
+                        const newType = e.target.value as AutoMessageTriggerType;
+                        const opt = TRIGGER_TYPE_OPTIONS.find(t => t.type === newType);
+                        updateCurrentCase(c => {
+                          let summary = opt?.label || 'Kích hoạt theo cấu hình';
+                          if (newType === 'WAIT_TIMEOUT' || newType === 'INACTIVITY_REMINDER' || newType === 'AUTO_CLOSE') {
+                            summary = `Sau ${c.trigger.value || 5} ${c.trigger.unit || 'phút'}`;
+                          } else if (newType === 'OFF_HOURS') {
+                            summary = `Ngoài giờ: ${c.trigger.timeFrom || '22:00'} - ${c.trigger.timeTo || '08:00'}`;
+                          } else if (newType === 'QUEUE_OVERLOAD') {
+                            summary = `Khi quá ${c.trigger.value || 20} khách`;
+                          }
+                          return {
+                            ...c,
+                            trigger: {
+                              ...c.trigger,
+                              type: newType,
+                              typeLabel: opt?.label || newType,
+                              summaryText: summary
+                            }
+                          };
+                        });
+                      }}
+                      className="w-full h-8.5 px-3 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none appearance-none cursor-pointer"
+                    >
+                      {TRIGGER_TYPE_OPTIONS.map(opt => (
+                        <option key={opt.type} value={opt.type}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
                 </div>
 
-                <span className="text-[10px] text-slate-300 bg-slate-700 px-2 py-0.5 rounded">
-                  {simMode === 'wait_standard' && 'Chờ tiếp nhận (Thường)'}
-                  {simMode === 'wait_vip' && 'Chờ tiếp nhận (VIP)'}
-                  {simMode === 'overload' && 'Quá tải hàng đợi'}
-                  {simMode === 'inactivity' && 'Đóng phiên chat'}
-                </span>
+                {/* Tham số chi tiết: Tách dòng rõ ràng theo từng loại điều kiện */}
+                {/* 1. Nhóm cần THỜI GIAN CHỜ (SLA, Không tương tác, Tự đóng phiên) */}
+                {(selectedCase.trigger.type === 'WAIT_TIMEOUT' || 
+                  selectedCase.trigger.type === 'INACTIVITY_REMINDER' || 
+                  selectedCase.trigger.type === 'AUTO_CLOSE') && (
+                  <div className="pt-2 border-t border-slate-200/70 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-slate-600 font-medium">
+                      Thời gian chờ kích hoạt:
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        max={3600}
+                        value={selectedCase.trigger.value || 5}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 1;
+                          updateCurrentCase(c => ({
+                            ...c,
+                            trigger: {
+                              ...c.trigger,
+                              value: val,
+                              summaryText: `Sau ${val} ${c.trigger.unit || 'phút'}`
+                            }
+                          }));
+                        }}
+                        className="w-16 h-8 text-center text-xs font-semibold bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none"
+                      />
+                      <select
+                        value={selectedCase.trigger.unit || 'phút'}
+                        onChange={(e) => {
+                          const unit = e.target.value as any;
+                          updateCurrentCase(c => ({
+                            ...c,
+                            trigger: {
+                              ...c.trigger,
+                              unit,
+                              summaryText: `Sau ${c.trigger.value || 5} ${unit}`
+                            }
+                          }));
+                        }}
+                        className="h-8 px-2 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none cursor-pointer"
+                      >
+                        <option value="giây">giây</option>
+                        <option value="phút">phút</option>
+                        <option value="giờ">giờ</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Nhóm HÀNG ĐỢI QUÁ TẢI (Dựa trên số lượng khách, KHÔNG dùng thời gian) */}
+                {selectedCase.trigger.type === 'QUEUE_OVERLOAD' && (
+                  <div className="pt-2 border-t border-slate-200/70 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-slate-600 font-medium">
+                      Ngưỡng số khách đang chờ trong hàng đợi:
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={1}
+                        max={500}
+                        value={selectedCase.trigger.value || 20}
+                        onChange={(e) => {
+                          const val = Number(e.target.value) || 1;
+                          updateCurrentCase(c => ({
+                            ...c,
+                            trigger: {
+                              ...c.trigger,
+                              value: val,
+                              summaryText: `Khi quá ${val} khách`
+                            }
+                          }));
+                        }}
+                        className="w-16 h-8 text-center text-xs font-semibold bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none"
+                      />
+                      <span className="text-xs text-slate-600 font-medium">khách</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Nhóm NGOÀI GIỜ LÀM VIỆC (Dựa trên khung giờ) */}
+                {selectedCase.trigger.type === 'OFF_HOURS' && (
+                  <div className="pt-2 border-t border-slate-200/70 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-slate-600 font-medium">
+                      Khung giờ ngoài ca trực:
+                    </span>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                      <span>Từ</span>
+                      <input
+                        type="text"
+                        value={selectedCase.trigger.timeFrom || '22:00'}
+                        onChange={(e) => {
+                          const from = e.target.value;
+                          updateCurrentCase(c => ({
+                            ...c,
+                            trigger: {
+                              ...c.trigger,
+                              timeFrom: from,
+                              summaryText: `Ngoài giờ: ${from} - ${c.trigger.timeTo || '08:00'}`
+                            }
+                          }));
+                        }}
+                        className="w-16 h-8 px-1.5 text-center text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none font-medium"
+                        placeholder="22:00"
+                      />
+                      <span>đến</span>
+                      <input
+                        type="text"
+                        value={selectedCase.trigger.timeTo || '08:00'}
+                        onChange={(e) => {
+                          const to = e.target.value;
+                          updateCurrentCase(c => ({
+                            ...c,
+                            trigger: {
+                              ...c.trigger,
+                              timeTo: to,
+                              summaryText: `Ngoài giờ: ${c.trigger.timeFrom || '22:00'} - ${to}`
+                            }
+                          }));
+                        }}
+                        className="w-16 h-8 px-1.5 text-center text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none font-medium"
+                        placeholder="08:00"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. Nhóm SỰ KIỆN TỨC THÌ (Lời chào ban đầu, Kết thúc phiên chat) */}
+                {(selectedCase.trigger.type === 'IMMEDIATE' || selectedCase.trigger.type === 'SESSION_CLOSED') && (
+                  <div className="pt-2 border-t border-slate-200/70 flex items-center justify-between text-xs text-slate-500">
+                    <span>Quy tắc:</span>
+                    <span className="font-medium text-slate-700">Kích hoạt tức thì khi sự kiện xảy ra (Không cần thời gian chờ)</span>
+                  </div>
+                )}
               </div>
 
-              {/* Chat Message Stream */}
-              <div className="flex-1 p-3.5 space-y-3 overflow-y-auto text-xs">
-                
-                {/* 1. Tin nhắn của khách gửi vào */}
-                <div className="flex justify-end">
-                  <div className="bg-[#f25621] text-white p-2.5 rounded-xl rounded-tr-xs max-w-[85%] shadow-xs">
-                    <p>
-                      {simMode === 'overload' 
-                        ? 'Tôi cần kiểm tra sự cố đường truyền mạng ngay lập tức ạ!' 
-                        : 'Chào tổng đài, tôi cần hỗ trợ kiểm tra tình trạng gói dịch vụ.'}
-                    </p>
-                    <span className="text-[9px] text-orange-200 block text-right mt-1">14:00 • Đã gửi</span>
-                  </div>
+              {/* Kênh áp dụng */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Kênh áp dụng <span className="text-red-500">*</span>
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {ALL_AUTO_MESSAGE_CHANNELS.map(channel => {
+                    const isChecked = selectedCase.channels.includes(channel);
+                    return (
+                      <button
+                        key={channel}
+                        type="button"
+                        onClick={() => handleToggleChannel(channel)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs border transition-colors cursor-pointer ${
+                          isChecked
+                            ? 'bg-slate-100 border-slate-300 text-slate-900 font-medium'
+                            : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="rounded text-[#f25621] focus:ring-[#f25621] h-3 w-3 pointer-events-none accent-[#f25621]"
+                        />
+                        <span>{channel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Nội dung tin nhắn */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-700">
+                    Nội dung tin nhắn <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    {selectedCase.message.length} ký tự
+                  </span>
                 </div>
 
-                {/* CASE 1A: Wait SLA Standard */}
-                {simMode === 'wait_standard' && (
-                  <>
-                    <div className="flex items-center justify-center my-2">
-                      <span className="bg-slate-200 text-slate-600 text-[10px] px-2.5 py-0.5 rounded-full font-medium">
-                        Đã chờ {config.waitTimeSla.standardWaitMinutes} phút chưa có Agent tiếp nhận
-                      </span>
-                    </div>
+                <textarea
+                  ref={textareaRef}
+                  rows={3}
+                  value={selectedCase.message}
+                  onChange={(e) => updateCurrentCase(c => ({ ...c, message: e.target.value }))}
+                  className="w-full p-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none"
+                  placeholder="Nhập nội dung tin nhắn tự động..."
+                />
 
-                    <div className="flex items-start gap-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 font-bold text-[10px] mt-0.5">
-                        <Bot className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="space-y-1.5 max-w-[88%]">
-                        <div className="p-3 rounded-xl rounded-tl-xs shadow-xs text-xs leading-relaxed bg-white border border-slate-200 text-slate-800">
-                          <p>{getRenderedPreviewText(config.waitTimeSla.standardMessage, false)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* CASE 1B: Wait SLA VIP */}
-                {simMode === 'wait_vip' && (
-                  <>
-                    <div className="flex items-center justify-center my-2">
-                      <span className="bg-slate-200 text-slate-600 text-[10px] px-2.5 py-0.5 rounded-full font-medium">
-                        Đã chờ {config.waitTimeSla.vipWaitMinutes} phút chưa có Agent tiếp nhận (VIP)
-                      </span>
-                    </div>
-
-                    <div className="flex items-start gap-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 font-bold text-[10px] mt-0.5">
-                        <Bot className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="space-y-1.5 max-w-[88%]">
-                        <div className="p-3 rounded-xl rounded-tl-xs shadow-xs text-xs leading-relaxed bg-white border border-slate-200 text-slate-800">
-                          <p>{getRenderedPreviewText(config.waitTimeSla.vipMessage, true)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* CASE 2: Queue Overload */}
-                {simMode === 'overload' && (
-                  <>
-                    <div className="flex items-center justify-center my-2">
-                      <span className="bg-slate-200 text-slate-700 text-[10px] px-2.5 py-0.5 rounded-full font-medium">
-                        Hàng đợi đang trong tình trạng quá tải
-                      </span>
-                    </div>
-
-                    <div className="flex items-start gap-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 font-bold text-[10px] mt-0.5">
-                        <Bot className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="space-y-1.5 max-w-[88%]">
-                        <div className="p-3 rounded-xl rounded-tl-xs shadow-xs text-xs leading-relaxed bg-white border border-slate-200 text-slate-800">
-                          <p>{getRenderedPreviewText(config.queueOverload.message)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* CASE 3: Inactivity Auto-Close */}
-                {simMode === 'inactivity' && (
-                  <>
-                    <div className="flex items-start gap-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center shrink-0 text-[10px]">
-                        CS
-                      </div>
-                      <div className="bg-white border border-slate-200 p-2.5 rounded-xl rounded-tl-xs max-w-[85%] text-xs shadow-xs">
-                        <span className="text-[10px] text-slate-400 block mb-0.5">Tư vấn viên Tâm • 14:15</span>
-                        <p>Dạ vâng, em đã kiểm tra thông tin hợp đồng cho bạn rồi ạ. Bạn có cần hỗ trợ thêm thông tin gì không?</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-center my-2">
-                      <span className="bg-slate-200 text-slate-600 text-[10px] px-2.5 py-0.5 rounded-full font-medium">
-                        Khách không phản hồi sau {config.inactivityClose.inactivityMinutes} phút
-                      </span>
-                    </div>
-
-                    <div className="flex items-start gap-2">
-                      <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 font-bold text-[10px] mt-0.5">
-                        <Bot className="w-3.5 h-3.5" />
-                      </div>
-                      <div className="space-y-1.5 max-w-[88%]">
-                        <div className="p-3 rounded-xl rounded-tl-xs shadow-xs text-xs leading-relaxed bg-white border border-slate-200 text-slate-800">
-                          <p>{getRenderedPreviewText(config.inactivityClose.message)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
+                {/* Biến chèn */}
+                <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px]">
+                  <span className="text-slate-400 mr-1">Chèn biến:</span>
+                  {COMMON_AUTO_MESSAGE_VARIABLES.map(v => (
+                    <button
+                      key={v.code}
+                      type="button"
+                      onClick={() => handleInsertVariable(v.code)}
+                      className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono text-[10px] border border-slate-200 cursor-pointer"
+                      title={v.label}
+                    >
+                      {v.code}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Chat Device Bottom Bar */}
-              <div className="p-2.5 bg-white border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-400">
-                <span>Khung soạn thảo tin nhắn...</span>
-                <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500">Mô phỏng</span>
+              {/* Xem trước thực tế */}
+              <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/40">
+                <div className="text-[11px] font-semibold text-slate-500 mb-1.5">
+                  Xem trước:
+                </div>
+                <div className="p-2.5 rounded bg-white border border-slate-200 text-xs text-slate-800 shadow-2xs max-w-md leading-relaxed">
+                  {previewRenderedMessage}
+                </div>
+              </div>
+
+              {/* Nút lưu */}
+              <div className="pt-2 border-t border-slate-100 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => showToast('Đã lưu kịch bản')}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#f25621] hover:bg-[#d94412] text-white text-xs font-semibold rounded transition-colors shadow-2xs cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Lưu thay đổi</span>
+                </button>
               </div>
 
             </div>
-
-          </div>
+          )}
         </div>
 
       </div>
+
+      {/* Modal Thêm Kịch Bản Mới */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-150">
+            
+            <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <h3 className="text-xs font-bold text-slate-900 uppercase">
+                Thêm kịch bản tin nhắn tự động
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateNewCase} className="p-4 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Tên kịch bản <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCaseName}
+                  onChange={(e) => setNewCaseName(e.target.value)}
+                  placeholder="VD: Thông báo bảo trì hệ thống"
+                  className="w-full h-8.5 px-2.5 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Danh mục <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={newCaseCategory}
+                    onChange={(e) => setNewCaseCategory(e.target.value)}
+                    className="w-full h-8.5 px-2 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none"
+                  >
+                    {AUTO_MESSAGE_CATEGORIES.filter(c => c !== 'Tất cả').map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Điều kiện kích hoạt <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={newCaseTriggerType}
+                    onChange={(e) => setNewCaseTriggerType(e.target.value as AutoMessageTriggerType)}
+                    className="w-full h-8.5 px-2 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none"
+                  >
+                    {TRIGGER_TYPE_OPTIONS.map(opt => (
+                      <option key={opt.type} value={opt.type}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {(newCaseTriggerType === 'WAIT_TIMEOUT' || newCaseTriggerType === 'INACTIVITY_REMINDER' || newCaseTriggerType === 'AUTO_CLOSE') && (
+                <div className="flex items-center justify-between p-2.5 rounded bg-slate-50 border border-slate-200">
+                  <span className="text-xs text-slate-600 font-medium">Thời gian chờ kích hoạt:</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={1}
+                      value={newCaseTriggerValue}
+                      onChange={(e) => setNewCaseTriggerValue(Number(e.target.value) || 1)}
+                      className="w-16 h-7.5 text-center text-xs bg-white border border-slate-300 rounded font-semibold"
+                    />
+                    <select
+                      value={newCaseTriggerUnit}
+                      onChange={(e) => setNewCaseTriggerUnit(e.target.value as any)}
+                      className="h-7.5 px-2 text-xs bg-white border border-slate-300 rounded cursor-pointer"
+                    >
+                      <option value="giây">giây</option>
+                      <option value="phút">phút</option>
+                      <option value="giờ">giờ</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {newCaseTriggerType === 'QUEUE_OVERLOAD' && (
+                <div className="flex items-center justify-between p-2.5 rounded bg-slate-50 border border-slate-200">
+                  <span className="text-xs text-slate-600 font-medium">Ngưỡng số khách đang chờ:</span>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number"
+                      min={1}
+                      value={newCaseTriggerValue}
+                      onChange={(e) => setNewCaseTriggerValue(Number(e.target.value) || 1)}
+                      className="w-16 h-7.5 text-center text-xs bg-white border border-slate-300 rounded font-semibold"
+                    />
+                    <span className="text-xs text-slate-600 font-medium">khách</span>
+                  </div>
+                </div>
+              )}
+
+              {newCaseTriggerType === 'OFF_HOURS' && (
+                <div className="flex items-center justify-between p-2.5 rounded bg-slate-50 border border-slate-200 text-xs">
+                  <span className="text-slate-600 font-medium">Khung giờ ngoài ca trực:</span>
+                  <div className="flex items-center gap-1">
+                    <span>Từ</span>
+                    <input
+                      type="text"
+                      value={newCaseTimeFrom}
+                      onChange={(e) => setNewCaseTimeFrom(e.target.value)}
+                      className="w-16 h-7.5 text-center text-xs bg-white border border-slate-300 rounded"
+                      placeholder="22:00"
+                    />
+                    <span>đến</span>
+                    <input
+                      type="text"
+                      value={newCaseTimeTo}
+                      onChange={(e) => setNewCaseTimeTo(e.target.value)}
+                      className="w-16 h-7.5 text-center text-xs bg-white border border-slate-300 rounded"
+                      placeholder="08:00"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Nội dung tin nhắn <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={newCaseMessage}
+                  onChange={(e) => setNewCaseMessage(e.target.value)}
+                  placeholder="Nhập nội dung tin nhắn tự động..."
+                  className="w-full p-2 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none"
+                />
+              </div>
+
+              <div className="pt-2 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium rounded cursor-pointer"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  className="px-3.5 py-1.5 bg-[#f25621] hover:bg-[#d94412] text-white text-xs font-semibold rounded shadow-2xs cursor-pointer"
+                >
+                  Tạo kịch bản
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
