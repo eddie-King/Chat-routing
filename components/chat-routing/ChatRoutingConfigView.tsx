@@ -16,7 +16,6 @@ import {
   AlertCircle,
   MessageSquare,
   PhoneCall,
-  Bot,
   Layers,
   Calendar,
   Share2,
@@ -220,61 +219,6 @@ export function ChatRoutingConfigView({
           <span>{toastMessage}</span>
         </div>
       )}
-
-      {/* Breadcrumb & Navigation Submenu Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 sm:px-4 rounded-lg border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-400">Định tuyến đa kênh /</span>
-          <span className="font-semibold text-slate-700">Cấu hình định tuyến</span>
-        </div>
-
-        {/* Submenu Switcher Buttons */}
-        <div className="flex items-center p-0.5 bg-slate-100 rounded-md border border-slate-200">
-          <button
-            onClick={onSwitchToCallRouting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
-          >
-            <PhoneCall className="w-3.5 h-3.5 text-slate-500" />
-            <span>Call Routing (Thoại)</span>
-          </button>
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold text-[#f25621] bg-white shadow-2xs transition-colors cursor-default"
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-[#f25621]" />
-            <span>Chat Routing (Tin nhắn)</span>
-            <span className="w-2 h-2 rounded-full bg-[#f25621] ml-0.5 animate-pulse" />
-          </button>
-          {onSwitchToChatInputRouting && (
-            <button
-              onClick={onSwitchToChatInputRouting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
-              title="Cấu hình Input Chat Routing (Type, Value, Output)"
-            >
-              <Filter className="w-3.5 h-3.5 text-[#f25621]" />
-              <span>Cấu hình Input Chat</span>
-            </button>
-          )}
-          {onSwitchToSocialMedia && (
-            <button
-              onClick={onSwitchToSocialMedia}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
-            >
-              <Share2 className="w-3.5 h-3.5 text-slate-500" />
-              <span>Kênh Mạng Xã Hội</span>
-            </button>
-          )}
-          {onSwitchToAutoMessages && (
-            <button
-              onClick={onSwitchToAutoMessages}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
-              title="Cấu hình tin nhắn tự động khi quá thời gian chờ và tự động đóng phiên"
-            >
-              <Clock className="w-3.5 h-3.5 text-slate-500" />
-              <span>Tin nhắn tự động (SLA)</span>
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* Main Card Container */}
       <div className="bg-white rounded-md shadow-xs border border-slate-200 p-4 sm:p-5 space-y-4">
@@ -518,11 +462,11 @@ export function ChatRoutingConfigView({
                 <th className="py-2.5 px-3 text-center w-20">Thao tác</th>
                 
                 <th 
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors group min-w-[220px]"
+                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors group min-w-[200px]"
                   onClick={() => handleSort('queueName')}
                 >
                   <div className="flex items-center">
-                    <span>Hàng đợi Chat (Queue Name & Code)</span>
+                    <span>Hàng đợi Chat</span>
                     {renderSortIcon('queueName')}
                   </div>
                 </th>
@@ -555,20 +499,6 @@ export function ChatRoutingConfigView({
                     <span>Thường</span>
                     {renderSortIcon('routingStandard')}
                   </div>
-                </th>
-
-                <th 
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors group min-w-[160px]"
-                  onClick={() => handleSort('fallbackAction')}
-                >
-                  <div className="flex items-center">
-                    <span>Hành động Fallback</span>
-                    {renderSortIcon('fallbackAction')}
-                  </div>
-                </th>
-
-                <th className="py-2.5 px-3 min-w-[170px]">
-                  <span>Hàng đợi VIP / Thường</span>
                 </th>
 
                 <th 
@@ -626,15 +556,10 @@ export function ChatRoutingConfigView({
                       </div>
                     </td>
 
-                    {/* Hàng đợi Chat & Mã Queue */}
+                    {/* Hàng đợi Chat */}
                     <td className="py-2.5 px-3">
                       <div className="font-semibold text-slate-900 text-xs">
                         {item.queueName || item.name}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="font-mono text-[11px] font-bold text-[#f25621] bg-orange-50 border border-orange-200 px-1.5 py-0.2 rounded">
-                          {item.queueCode}
-                        </span>
                       </div>
                     </td>
 
@@ -663,33 +588,6 @@ export function ChatRoutingConfigView({
                       </span>
                     </td>
 
-                    {/* Hành động Fallback */}
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      <span className="text-slate-700 text-xs font-medium flex items-center gap-1.5">
-                        <Bot className="w-3.5 h-3.5 text-[#f25621] shrink-0" />
-                        <span className="truncate max-w-[160px]" title={item.fallbackAction}>{item.fallbackAction}</span>
-                      </span>
-                    </td>
-
-                    {/* Hàng đợi VIP / Thường */}
-                    <td className="py-2.5 px-3 whitespace-nowrap">
-                      {item.routingVIP === 'Có' && (
-                        <div className="text-[11px] text-slate-800 font-medium">
-                          <span className="font-semibold text-[#f25621]">VIP:</span> Queue {item.vipQueueSize ?? 15} • Chờ {item.vipQueueWaitTime ?? 25}s
-                        </div>
-                      )}
-                      {item.routingStandard === 'Có' && (
-                        <div className="text-[11px] text-slate-600">
-                          <span className="font-semibold text-slate-700">Thường:</span> Queue {item.stdQueueSize ?? 30} • Chờ {item.stdQueueWaitTime ?? 45}s
-                        </div>
-                      )}
-                      {item.routingVIP !== 'Có' && item.routingStandard !== 'Có' && (
-                        <div className="text-[11px] text-slate-400 italic">
-                          Chưa bật luồng định tuyến
-                        </div>
-                      )}
-                    </td>
-
                     {/* Ngày tạo */}
                     <td className="py-2.5 px-3 whitespace-nowrap text-slate-500 font-mono text-[11px]">
                       {item.createdAt}
@@ -698,7 +596,7 @@ export function ChatRoutingConfigView({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-slate-400">
+                  <td colSpan={6} className="py-8 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <AlertCircle className="w-6 h-6 text-slate-300" />
                       <span>Không tìm thấy bản ghi cấu hình Chat Routing phù hợp</span>

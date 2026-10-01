@@ -60,7 +60,7 @@ export const TRIGGER_TYPE_OPTIONS: { type: AutoMessageTriggerType; label: string
   { type: 'IMMEDIATE', label: 'Ngay khi mở phiên chat (Sự kiện tức thì)' },
   { type: 'WAIT_TIMEOUT', label: 'Quá thời gian chờ tiếp nhận (Theo thời gian chờ)', defaultUnit: 'phút' },
   { type: 'OFF_HOURS', label: 'Ngoài giờ làm việc (Theo khung giờ)' },
-  { type: 'QUEUE_OVERLOAD', label: 'Hàng đợi quá tải (Theo số lượng khách chờ)', defaultUnit: 'khách' },
+  { type: 'QUEUE_OVERLOAD', label: 'Hàng đợi quá tải (Hệ thống tự động tính)' },
   { type: 'INACTIVITY_REMINDER', label: 'Khách không tương tác (Theo thời gian chờ)', defaultUnit: 'phút' },
   { type: 'AUTO_CLOSE', label: 'Tự động đóng phiên (Theo thời gian chờ)', defaultUnit: 'phút' },
   { type: 'SESSION_CLOSED', label: 'Khi kết thúc phiên chat (Sự kiện tức thì)' },

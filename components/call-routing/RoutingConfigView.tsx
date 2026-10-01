@@ -169,32 +169,6 @@ export function RoutingConfigView({ onSwitchToChatRouting }: RoutingConfigViewPr
         </div>
       )}
 
-      {/* Breadcrumb & Navigation Submenu Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 sm:px-4 rounded-lg border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-400">Định tuyến đa kênh /</span>
-          <span className="font-semibold text-slate-700">Cấu hình định tuyến</span>
-        </div>
-
-        {/* 2 Submenu Switcher Buttons */}
-        <div className="flex items-center p-0.5 bg-slate-100 rounded-md border border-slate-200">
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold text-[#f25621] bg-white shadow-2xs transition-colors cursor-default"
-          >
-            <PhoneCall className="w-3.5 h-3.5 text-[#f25621]" />
-            <span>Call Routing (Thoại)</span>
-            <span className="w-2 h-2 rounded-full bg-[#f25621] ml-0.5 animate-pulse" />
-          </button>
-          <button
-            onClick={onSwitchToChatRouting}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
-            <span>Chat Routing (Tin nhắn)</span>
-          </button>
-        </div>
-      </div>
-
       {/* Main Container Card */}
       <div className="bg-white rounded-md border border-slate-200 shadow-2xs p-5 sm:p-6 space-y-6">
         

@@ -271,64 +271,6 @@ export function ChatRoutingInputConfigView({
         </div>
       )}
 
-      {/* Breadcrumb & Navigation Submenu Switcher */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-2.5 sm:px-4 rounded-lg border border-slate-200 shadow-2xs">
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-slate-400">Tiếp nhận & phân phối /</span>
-          <span className="font-semibold text-slate-800">Cấu hình Input Chat</span>
-        </div>
-
-        {/* Submenu Switcher */}
-        <div className="flex items-center p-0.5 bg-slate-100 rounded-md border border-slate-200 text-xs">
-          {onSwitchToCallRouting && (
-            <button
-              onClick={onSwitchToCallRouting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-slate-500" />
-              <span>Call Routing</span>
-            </button>
-          )}
-
-          {onSwitchToChatRouting && (
-            <button
-              onClick={onSwitchToChatRouting}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
-              <span>Chat Routing</span>
-            </button>
-          )}
-
-          <button
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold text-[#f25621] bg-white shadow-2xs transition-colors cursor-default"
-          >
-            <Filter className="w-3.5 h-3.5 text-[#f25621]" />
-            <span>Cấu hình Input Chat</span>
-          </button>
-
-          {onSwitchToSocialMedia && (
-            <button
-              onClick={onSwitchToSocialMedia}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
-            >
-              <Share2 className="w-3.5 h-3.5 text-slate-500" />
-              <span>Kênh Mạng Xã Hội</span>
-            </button>
-          )}
-
-          {onSwitchToAutoMessages && (
-            <button
-              onClick={onSwitchToAutoMessages}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-white/60 transition-colors cursor-pointer"
-            >
-              <Clock className="w-3.5 h-3.5 text-slate-500" />
-              <span>Tin nhắn tự động</span>
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Main Header Card */}
       <div className="bg-white rounded-lg border border-slate-200 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-2xs">
         <div className="flex items-center gap-3">

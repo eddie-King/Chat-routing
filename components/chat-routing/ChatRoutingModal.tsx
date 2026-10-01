@@ -141,12 +141,18 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
   const [vipQueueSize, setVipQueueSize] = useState<number | string>(
     initialData?.vipQueueSize ?? (initialData?.queueSize ? Math.min(initialData.queueSize, 15) : 15)
   );
-  const [vipQueueWaitTime, setVipQueueWaitTime] = useState<number | string>(
-    initialData?.vipQueueWaitTime ?? (initialData?.queueWaitTime ? Math.min(initialData.queueWaitTime, 30) : 25)
-  );
-  const [vipCustomerTimeoutSec, setVipCustomerTimeoutSec] = useState<number | string>(
-    initialData?.vipCustomerTimeoutSec ?? initialData?.customerTimeoutSec ?? 180
-  );
+  const [vipQueueWaitTime, setVipQueueWaitTime] = useState<number | string>(() => {
+    if (initialData?.vipQueueWaitTime !== undefined) {
+      return initialData.vipQueueWaitTime > 15 ? Math.round(initialData.vipQueueWaitTime / 60) || 2 : initialData.vipQueueWaitTime;
+    }
+    return 2;
+  });
+  const [vipCustomerTimeoutSec, setVipCustomerTimeoutSec] = useState<number | string>(() => {
+    if (initialData?.vipCustomerTimeoutSec !== undefined) {
+      return initialData.vipCustomerTimeoutSec >= 30 ? Math.round(initialData.vipCustomerTimeoutSec / 60) || 3 : initialData.vipCustomerTimeoutSec;
+    }
+    return 3;
+  });
 
   // Standard Routing Section
   const [isStdRouting, setIsStdRouting] = useState(initialData ? initialData.routingStandard === 'Có' : true);
@@ -160,12 +166,18 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
   const [stdQueueSize, setStdQueueSize] = useState<number | string>(
     initialData?.stdQueueSize ?? initialData?.queueSize ?? 30
   );
-  const [stdQueueWaitTime, setStdQueueWaitTime] = useState<number | string>(
-    initialData?.stdQueueWaitTime ?? initialData?.queueWaitTime ?? 45
-  );
-  const [stdCustomerTimeoutSec, setStdCustomerTimeoutSec] = useState<number | string>(
-    initialData?.stdCustomerTimeoutSec ?? initialData?.customerTimeoutSec ?? 180
-  );
+  const [stdQueueWaitTime, setStdQueueWaitTime] = useState<number | string>(() => {
+    if (initialData?.stdQueueWaitTime !== undefined) {
+      return initialData.stdQueueWaitTime > 15 ? Math.round(initialData.stdQueueWaitTime / 60) || 5 : initialData.stdQueueWaitTime;
+    }
+    return 5;
+  });
+  const [stdCustomerTimeoutSec, setStdCustomerTimeoutSec] = useState<number | string>(() => {
+    if (initialData?.stdCustomerTimeoutSec !== undefined) {
+      return initialData.stdCustomerTimeoutSec >= 30 ? Math.round(initialData.stdCustomerTimeoutSec / 60) || 5 : initialData.stdCustomerTimeoutSec;
+    }
+    return 5;
+  });
 
   // Fallback
   const [fallbackAction, setFallbackAction] = useState(initialData?.fallbackAction || CHAT_FALLBACK_OPTIONS[0]);
@@ -225,8 +237,8 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
       vipRecentScope: isVipRouting && vipRecentAgent ? vipRecentScope : undefined,
       vipRecentHours: isVipRouting && vipRecentAgent ? Number(vipRecentHours) : undefined,
       vipQueueSize: isVipRouting ? (Number(vipQueueSize) || 15) : undefined,
-      vipQueueWaitTime: isVipRouting ? (Number(vipQueueWaitTime) || 25) : undefined,
-      vipCustomerTimeoutSec: isVipRouting ? (Number(vipCustomerTimeoutSec) || 180) : undefined,
+      vipQueueWaitTime: isVipRouting ? (Number(vipQueueWaitTime) || 2) : undefined,
+      vipCustomerTimeoutSec: isVipRouting ? (Number(vipCustomerTimeoutSec) || 3) : undefined,
 
       // Standard Routing & Queue Thường riêng
       routingStandard: isStdRouting ? 'Có' : 'Không',
@@ -236,15 +248,15 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
       stdRecentScope: isStdRouting && stdRecentAgent ? stdRecentScope : undefined,
       stdRecentHours: isStdRouting && stdRecentAgent ? Number(stdRecentHours) : undefined,
       stdQueueSize: isStdRouting ? (Number(stdQueueSize) || 30) : undefined,
-      stdQueueWaitTime: isStdRouting ? (Number(stdQueueWaitTime) || 45) : undefined,
-      stdCustomerTimeoutSec: isStdRouting ? (Number(stdCustomerTimeoutSec) || 180) : undefined,
+      stdQueueWaitTime: isStdRouting ? (Number(stdQueueWaitTime) || 5) : undefined,
+      stdCustomerTimeoutSec: isStdRouting ? (Number(stdCustomerTimeoutSec) || 5) : undefined,
 
       fallbackAction,
 
       // Compatibility shared fields
       queueSize: isStdRouting ? (Number(stdQueueSize) || 30) : (Number(vipQueueSize) || 15),
-      queueWaitTime: isStdRouting ? (Number(stdQueueWaitTime) || 45) : (Number(vipQueueWaitTime) || 25),
-      customerTimeoutSec: isStdRouting ? (Number(stdCustomerTimeoutSec) || 180) : (Number(vipCustomerTimeoutSec) || 180),
+      queueWaitTime: isStdRouting ? (Number(stdQueueWaitTime) || 5) : (Number(vipQueueWaitTime) || 2),
+      customerTimeoutSec: isStdRouting ? (Number(stdCustomerTimeoutSec) || 5) : (Number(vipCustomerTimeoutSec) || 3),
 
       strategy: initialData?.strategy || 'Skill-based',
       skillGroup: isVipRouting ? vipSkillName : (isStdRouting ? stdSkillName : 'Mặc định'),
@@ -488,14 +500,14 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
-                          min="5"
-                          max="600"
+                          min="1"
+                          max="120"
                           value={vipQueueWaitTime}
                           onChange={(e) => setVipQueueWaitTime(e.target.value)}
                           className="w-20 h-8 px-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded text-center focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none"
                           required
                         />
-                        <span className="text-xs text-slate-600">giây</span>
+                        <span className="text-xs text-slate-600">phút</span>
                       </div>
                     </div>
 
@@ -507,13 +519,13 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
-                          min="30"
-                          max="1800"
+                          min="1"
+                          max="180"
                           value={vipCustomerTimeoutSec}
                           onChange={(e) => setVipCustomerTimeoutSec(e.target.value)}
                           className="w-20 h-8 px-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded text-center focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none"
                         />
-                        <span className="text-xs text-slate-600">giây</span>
+                        <span className="text-xs text-slate-600">phút</span>
                       </div>
                     </div>
                   </div>
@@ -662,14 +674,14 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
-                          min="5"
-                          max="600"
+                          min="1"
+                          max="120"
                           value={stdQueueWaitTime}
                           onChange={(e) => setStdQueueWaitTime(e.target.value)}
                           className="w-20 h-8 px-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded text-center focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none"
                           required
                         />
-                        <span className="text-xs text-slate-600">giây</span>
+                        <span className="text-xs text-slate-600">phút</span>
                       </div>
                     </div>
 
@@ -681,13 +693,13 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                       <div className="flex items-center gap-2">
                         <input
                           type="number"
-                          min="30"
-                          max="1800"
+                          min="1"
+                          max="180"
                           value={stdCustomerTimeoutSec}
                           onChange={(e) => setStdCustomerTimeoutSec(e.target.value)}
                           className="w-20 h-8 px-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded text-center focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none"
                         />
-                        <span className="text-xs text-slate-600">giây</span>
+                        <span className="text-xs text-slate-600">phút</span>
                       </div>
                     </div>
                   </div>

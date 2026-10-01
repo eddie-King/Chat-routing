@@ -188,7 +188,7 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
                         Thời gian chờ hàng đợi VIP:
                       </span>
                       <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {item.vipQueueWaitTime ?? item.queueWaitTime ?? 25} giây
+                        {(item.vipQueueWaitTime && item.vipQueueWaitTime > 15 ? Math.round(item.vipQueueWaitTime / 60) : item.vipQueueWaitTime) ?? 2} phút
                       </span>
                     </div>
 
@@ -197,7 +197,7 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
                         Thời gian chờ khách phản hồi:
                       </span>
                       <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {item.vipCustomerTimeoutSec ?? item.customerTimeoutSec ?? 180} giây
+                        {(item.vipCustomerTimeoutSec && item.vipCustomerTimeoutSec >= 30 ? Math.round(item.vipCustomerTimeoutSec / 60) : item.vipCustomerTimeoutSec) ?? 3} phút
                       </span>
                     </div>
                   </div>
@@ -297,7 +297,7 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
                         Thời gian chờ hàng đợi thường:
                       </span>
                       <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {item.stdQueueWaitTime ?? item.queueWaitTime ?? 45} giây
+                        {(item.stdQueueWaitTime && item.stdQueueWaitTime > 15 ? Math.round(item.stdQueueWaitTime / 60) : item.stdQueueWaitTime) ?? 5} phút
                       </span>
                     </div>
 
@@ -306,7 +306,7 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
                         Thời gian chờ khách phản hồi:
                       </span>
                       <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {item.stdCustomerTimeoutSec ?? item.customerTimeoutSec ?? 180} giây
+                        {(item.stdCustomerTimeoutSec && item.stdCustomerTimeoutSec >= 30 ? Math.round(item.stdCustomerTimeoutSec / 60) : item.stdCustomerTimeoutSec) ?? 5} phút
                       </span>
                     </div>
                   </div>
