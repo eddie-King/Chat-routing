@@ -100,6 +100,16 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
             </div>
           </div>
 
+          {/* Thời gian chờ hàng đợi (hàng ngang) */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-semibold text-slate-700 whitespace-nowrap">
+              Thời gian chờ hàng đợi:
+            </span>
+            <div className="h-8.5 px-3 flex items-center text-xs font-semibold text-slate-900 bg-slate-100 border border-slate-200 rounded">
+              {(item.queueWaitTime && item.queueWaitTime > 15 ? Math.round(item.queueWaitTime / 60) : item.queueWaitTime) ?? (item.vipQueueWaitTime && item.vipQueueWaitTime > 15 ? Math.round(item.vipQueueWaitTime / 60) : item.vipQueueWaitTime) ?? (item.stdQueueWaitTime && item.stdQueueWaitTime > 15 ? Math.round(item.stdQueueWaitTime / 60) : item.stdQueueWaitTime) ?? 2} phút
+            </div>
+          </div>
+
           {/* Section: Routing VIP */}
           <div className="space-y-3 pt-1">
             <div className="flex items-center gap-3">
@@ -191,15 +201,6 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
                       </span>
                       <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
                         {item.vipQueueSize ?? item.queueSize ?? 15} phiên chat
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-medium text-slate-700 w-56">
-                        Thời gian chờ hàng đợi VIP:
-                      </span>
-                      <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {(item.vipQueueWaitTime && item.vipQueueWaitTime > 15 ? Math.round(item.vipQueueWaitTime / 60) : item.vipQueueWaitTime) ?? 2} phút
                       </span>
                     </div>
 
@@ -320,15 +321,6 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
                       </span>
                       <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
                         {item.stdQueueSize ?? item.queueSize ?? 30} phiên chat
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-medium text-slate-700 w-56">
-                        Thời gian chờ hàng đợi thường:
-                      </span>
-                      <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {(item.stdQueueWaitTime && item.stdQueueWaitTime > 15 ? Math.round(item.stdQueueWaitTime / 60) : item.stdQueueWaitTime) ?? 5} phút
                       </span>
                     </div>
 

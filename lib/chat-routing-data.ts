@@ -37,8 +37,9 @@ export interface ChatRoutingConfigItem {
   channel?: string; // Tương thích hiển thị: 'Tất cả kênh'
   name?: string; // Tên hiển thị tương thích
 
-  // Working Schedule (Chung cho quy tắc định tuyến)
+  // Working Schedule & Queue Wait Time (Chung cho cấu hình)
   workingSchedule?: string;
+  queueWaitTime?: number; // phút - Thời gian chờ hàng đợi chung (không phân biệt VIP/thường)
 
   // VIP Routing
   routingVIP: 'Có' | 'Không';
@@ -78,7 +79,6 @@ export interface ChatRoutingConfigItem {
 
   // Shared / fallback compatibility fields
   queueSize?: number;
-  queueWaitTime?: number;
   agentTimeoutMin?: number;
   customerTimeoutSec?: number;
   maxConcurrentChats?: number;
