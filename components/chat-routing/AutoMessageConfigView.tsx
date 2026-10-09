@@ -24,6 +24,7 @@ import {
   TRIGGER_TYPE_OPTIONS,
   COMMON_AUTO_MESSAGE_VARIABLES
 } from '@/lib/auto-message-data';
+import { DeleteConfirmModal } from '@/components/call-routing/DeleteConfirmModal';
 
 interface AutoMessageConfigViewProps {
   onSwitchToCallRouting?: () => void;
@@ -109,6 +110,7 @@ export function AutoMessageConfigView({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [deleteTargetCase, setDeleteTargetCase] = useState<{ id: string; name: string } | null>(null);
 
   // Chế độ thêm kịch bản mới trực tiếp ở ô bên phải
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -248,14 +250,19 @@ export function AutoMessageConfigView({
       showToast('Cần giữ lại ít nhất 1 kịch bản!');
       return;
     }
-    if (confirm(`Xóa kịch bản "${name}"?`)) {
-      const nextCases = cases.filter(c => c.id !== id);
-      persistCases(nextCases);
-      if (selectedCaseId === id) {
-        setSelectedCaseId(nextCases[0]?.id || '');
-      }
-      showToast('Đã xóa kịch bản');
+    setDeleteTargetCase({ id, name });
+  };
+
+  const handleConfirmDeleteCase = () => {
+    if (!deleteTargetCase) return;
+    const { id } = deleteTargetCase;
+    const nextCases = cases.filter(c => c.id !== id);
+    persistCases(nextCases);
+    if (selectedCaseId === id) {
+      setSelectedCaseId(nextCases[0]?.id || '');
     }
+    showToast('Đã xóa kịch bản');
+    setDeleteTargetCase(null);
   };
 
   const handleDuplicateCase = (caseItem: AutoMessageCaseItem) => {
@@ -680,6 +687,17 @@ export function AutoMessageConfigView({
         </div>
 
       </div>
+
+      {/* Pop up xác nhận xóa chuẩn theo hình ảnh */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteTargetCase)}
+        onClose={() => setDeleteTargetCase(null)}
+        onConfirm={handleConfirmDeleteCase}
+        title="Thông báo"
+        message="Bạn có chắc chắn muốn xóa?"
+        confirmText="Đồng ý"
+        cancelText="Hủy bỏ"
+      />
 
     </div>
   );

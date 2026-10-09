@@ -14,7 +14,17 @@ export interface HolidaySchedule {
   id: string;
   name: string;
   date?: string;
+  startDate?: string;
+  endDate?: string;
   closed?: boolean;
+}
+
+export interface MakeUpDaySchedule {
+  id: string;
+  name: string;
+  date?: string;
+  shift?: string;
+  forHoliday?: string;
 }
 
 export interface WorkingScheduleItem {
@@ -27,7 +37,7 @@ export interface WorkingScheduleItem {
   timezone?: string;
   days: DayWorkingSchedule[];
   holidays: HolidaySchedule[];
-  makeUpDays?: string[];
+  makeUpDays?: MakeUpDaySchedule[];
   afterHoursAction?: string;
   status?: 'Áp dụng' | 'Tạm dừng';
   createdAt?: string;

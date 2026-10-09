@@ -30,6 +30,7 @@ import {
   SOCIAL_BRANCH_DEPARTMENTS
 } from '@/lib/social-media-data';
 import { SocialAccountModal } from './SocialAccountModal';
+import { DeleteConfirmModal } from '@/components/call-routing/DeleteConfirmModal';
 
 interface SocialMediaConfigViewProps {
   onNavigateToChatRouting?: () => void;
@@ -57,6 +58,7 @@ export function SocialMediaConfigView({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [revealedTokens, setRevealedTokens] = useState<Record<string, boolean>>({});
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -91,10 +93,14 @@ export function SocialMediaConfigView({
   };
 
   const handleDelete = (id: string, name: string) => {
-    if (confirm(`Bạn có chắc chắn muốn xóa tài khoản / Fanpage "${name}"?`)) {
-      setAccounts(prev => prev.filter(item => item.id !== id));
-      showToast(`Đã xóa tài khoản "${name}" thành công`);
-    }
+    setDeleteTarget({ id, name });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    setAccounts(prev => prev.filter(item => item.id !== deleteTarget.id));
+    showToast(`Đã xóa tài khoản "${deleteTarget.name}" thành công`);
+    setDeleteTarget(null);
   };
 
   const handleSaveAccount = (account: SocialAccountItem) => {
@@ -612,6 +618,17 @@ export function SocialMediaConfigView({
         onSave={handleSaveAccount}
         initialData={editingAccount}
         defaultChannel={activeTab}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Thông báo"
+        message="Bạn có chắc chắn muốn xóa?"
+        confirmText="Đồng ý"
+        cancelText="Hủy bỏ"
       />
 
     </div>
