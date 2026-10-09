@@ -13,8 +13,10 @@ import {
   CHAT_VIP_GROUPS,
   CHAT_ROUTING_METHODS,
   CHAT_SKILL_NAMES,
+  CHAT_SKILL_GROUPS,
   CHAT_AGENT_SCOPE_OPTIONS
 } from '@/lib/chat-routing-data';
+import { getAvailableWorkingSchedules } from '@/lib/working-hours-data';
 
 interface ChatRoutingModalProps {
   isOpen: boolean;
@@ -128,6 +130,12 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
     }
   };
 
+  // Lịch làm việc (Chung cho quy tắc định tuyến)
+  const [scheduleOptions] = useState<string[]>(() => getAvailableWorkingSchedules());
+  const [workingSchedule, setWorkingSchedule] = useState<string>(
+    initialData?.workingSchedule || scheduleOptions[0] || 'Giờ hành chính tiêu chuẩn (T2 - T6: 08:00 - 17:30, T7 sáng)'
+  );
+
   // VIP Routing Section
   const [isVipRouting, setIsVipRouting] = useState(initialData ? initialData.routingVIP === 'Có' : true);
   const [vipCustomerGroup, setVipCustomerGroup] = useState(initialData?.vipCustomerGroup || CHAT_VIP_GROUPS[0]);
@@ -136,6 +144,9 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
   const [vipRecentAgent, setVipRecentAgent] = useState(initialData?.vipRecentAgent ?? true);
   const [vipRecentScope, setVipRecentScope] = useState(initialData?.vipRecentScope || CHAT_AGENT_SCOPE_OPTIONS[0]);
   const [vipRecentHours, setVipRecentHours] = useState(initialData?.vipRecentHours ?? 24);
+  const [vipFallbackAction, setVipFallbackAction] = useState<string>(
+    initialData?.vipFallbackAction || initialData?.fallbackAction || CHAT_FALLBACK_OPTIONS[0]
+  );
 
   // Cấu hình Hàng đợi VIP riêng (Kích thước, Thời gian chờ, Timeout phản hồi)
   const [vipQueueSize, setVipQueueSize] = useState<number | string>(
@@ -146,6 +157,12 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
       return initialData.vipQueueWaitTime > 15 ? Math.round(initialData.vipQueueWaitTime / 60) || 2 : initialData.vipQueueWaitTime;
     }
     return 2;
+  });
+  const [vipAgentTimeoutMin, setVipAgentTimeoutMin] = useState<number | string>(() => {
+    if (initialData?.vipAgentTimeoutMin !== undefined) {
+      return initialData.vipAgentTimeoutMin;
+    }
+    return initialData?.agentTimeoutMin ?? 2;
   });
   const [vipCustomerTimeoutSec, setVipCustomerTimeoutSec] = useState<number | string>(() => {
     if (initialData?.vipCustomerTimeoutSec !== undefined) {
@@ -161,6 +178,9 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
   const [stdRecentAgent, setStdRecentAgent] = useState(initialData?.stdRecentAgent ?? false);
   const [stdRecentScope, setStdRecentScope] = useState(initialData?.stdRecentScope || CHAT_AGENT_SCOPE_OPTIONS[0]);
   const [stdRecentHours, setStdRecentHours] = useState(initialData?.stdRecentHours ?? 24);
+  const [stdFallbackAction, setStdFallbackAction] = useState<string>(
+    initialData?.stdFallbackAction || initialData?.fallbackAction || CHAT_FALLBACK_OPTIONS[1] || CHAT_FALLBACK_OPTIONS[0]
+  );
 
   // Cấu hình Hàng đợi Thường riêng (Kích thước, Thời gian chờ, Timeout phản hồi)
   const [stdQueueSize, setStdQueueSize] = useState<number | string>(
@@ -172,6 +192,12 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
     }
     return 5;
   });
+  const [stdAgentTimeoutMin, setStdAgentTimeoutMin] = useState<number | string>(() => {
+    if (initialData?.stdAgentTimeoutMin !== undefined) {
+      return initialData.stdAgentTimeoutMin;
+    }
+    return initialData?.agentTimeoutMin ?? 3;
+  });
   const [stdCustomerTimeoutSec, setStdCustomerTimeoutSec] = useState<number | string>(() => {
     if (initialData?.stdCustomerTimeoutSec !== undefined) {
       return initialData.stdCustomerTimeoutSec >= 30 ? Math.round(initialData.stdCustomerTimeoutSec / 60) || 5 : initialData.stdCustomerTimeoutSec;
@@ -179,8 +205,8 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
     return 5;
   });
 
-  // Fallback
-  const [fallbackAction, setFallbackAction] = useState(initialData?.fallbackAction || CHAT_FALLBACK_OPTIONS[0]);
+  // Fallback chung
+  const fallbackAction = isVipRouting ? vipFallbackAction : stdFallbackAction;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,6 +241,9 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
       queueCode: queueCode.trim(),
       name: queueName.trim(),
 
+      // Lịch làm việc chung
+      workingSchedule,
+
       // Trường Input: Lưu giá trị outcome (ví dụ: INPUT_FB_TECH_SUPPORT)
       inputSource: curSource,
       inputValues: curValues.length > 0 ? curValues : [inputOutput],
@@ -236,8 +265,10 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
       vipRecentAgent: isVipRouting ? vipRecentAgent : false,
       vipRecentScope: isVipRouting && vipRecentAgent ? vipRecentScope : undefined,
       vipRecentHours: isVipRouting && vipRecentAgent ? Number(vipRecentHours) : undefined,
+      vipFallbackAction: isVipRouting ? vipFallbackAction : undefined,
       vipQueueSize: isVipRouting ? (Number(vipQueueSize) || 15) : undefined,
       vipQueueWaitTime: isVipRouting ? (Number(vipQueueWaitTime) || 2) : undefined,
+      vipAgentTimeoutMin: isVipRouting ? (Number(vipAgentTimeoutMin) || 2) : undefined,
       vipCustomerTimeoutSec: isVipRouting ? (Number(vipCustomerTimeoutSec) || 3) : undefined,
 
       // Standard Routing & Queue Thường riêng
@@ -247,15 +278,18 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
       stdRecentAgent: isStdRouting ? stdRecentAgent : false,
       stdRecentScope: isStdRouting && stdRecentAgent ? stdRecentScope : undefined,
       stdRecentHours: isStdRouting && stdRecentAgent ? Number(stdRecentHours) : undefined,
+      stdFallbackAction: isStdRouting ? stdFallbackAction : undefined,
       stdQueueSize: isStdRouting ? (Number(stdQueueSize) || 30) : undefined,
       stdQueueWaitTime: isStdRouting ? (Number(stdQueueWaitTime) || 5) : undefined,
+      stdAgentTimeoutMin: isStdRouting ? (Number(stdAgentTimeoutMin) || 3) : undefined,
       stdCustomerTimeoutSec: isStdRouting ? (Number(stdCustomerTimeoutSec) || 5) : undefined,
 
-      fallbackAction,
+      fallbackAction: isVipRouting ? vipFallbackAction : (isStdRouting ? stdFallbackAction : CHAT_FALLBACK_OPTIONS[0]),
 
       // Compatibility shared fields
       queueSize: isStdRouting ? (Number(stdQueueSize) || 30) : (Number(vipQueueSize) || 15),
       queueWaitTime: isStdRouting ? (Number(stdQueueWaitTime) || 5) : (Number(vipQueueWaitTime) || 2),
+      agentTimeoutMin: isStdRouting ? (Number(stdAgentTimeoutMin) || 3) : (Number(vipAgentTimeoutMin) || 2),
       customerTimeoutSec: isStdRouting ? (Number(stdCustomerTimeoutSec) || 5) : (Number(vipCustomerTimeoutSec) || 3),
 
       strategy: initialData?.strategy || 'Skill-based',
@@ -324,25 +358,48 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
             </div>
           </div>
 
-          {/* Row 2: Trường Input - Giá trị chỉ cần chọn 1 trong list data từ outcome ví dụ: INPUT_FB_TECH_SUPPORT */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Input <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <select
-                value={inputOutput}
-                onChange={(e) => handleOutcomeChange(e.target.value)}
-                className="w-full h-9.5 px-3 pr-8 text-xs text-slate-800 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer appearance-none font-mono"
-                required
-              >
-                {outcomeOptions.map((outcome) => (
-                  <option key={outcome} value={outcome}>
-                    {outcome}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          {/* Row 2: Trường Input & Lịch làm việc (để chung) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Input <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={inputOutput}
+                  onChange={(e) => handleOutcomeChange(e.target.value)}
+                  className="w-full h-9.5 px-3 pr-8 text-xs text-slate-800 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer appearance-none font-mono"
+                  required
+                >
+                  {outcomeOptions.map((outcome) => (
+                    <option key={outcome} value={outcome}>
+                      {outcome}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Lịch làm việc <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={workingSchedule}
+                  onChange={(e) => setWorkingSchedule(e.target.value)}
+                  className="w-full h-9.5 px-3 pr-8 text-xs text-slate-800 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer appearance-none"
+                  required
+                >
+                  {scheduleOptions.map((sch) => (
+                    <option key={sch} value={sch}>
+                      {sch}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
           </div>
 
@@ -387,7 +444,19 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                     </label>
                     <select
                       value={vipRoutingMethod}
-                      onChange={(e) => setVipRoutingMethod(e.target.value)}
+                      onChange={(e) => {
+                        const newMethod = e.target.value;
+                        setVipRoutingMethod(newMethod);
+                        if (newMethod === 'Nhóm kỹ năng') {
+                          if (!CHAT_SKILL_GROUPS.includes(vipSkillName)) {
+                            setVipSkillName(CHAT_SKILL_GROUPS[0]);
+                          }
+                        } else {
+                          if (!CHAT_SKILL_NAMES.includes(vipSkillName)) {
+                            setVipSkillName(CHAT_SKILL_NAMES[0]);
+                          }
+                        }
+                      }}
                       className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer"
                     >
                       {CHAT_ROUTING_METHODS.map((m) => (
@@ -398,14 +467,14 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tên kỹ năng <span className="text-red-500">*</span>
+                      {vipRoutingMethod === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'} <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={vipSkillName}
                       onChange={(e) => setVipSkillName(e.target.value)}
                       className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer"
                     >
-                      {CHAT_SKILL_NAMES.map((s) => (
+                      {(vipRoutingMethod === 'Nhóm kỹ năng' ? CHAT_SKILL_GROUPS : CHAT_SKILL_NAMES).map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
@@ -511,6 +580,24 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                       </div>
                     </div>
 
+                    {/* Thời gian chờ Agent phản hồi */}
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-medium text-slate-700 w-52">
+                        Thời gian chờ Agent phản hồi
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="180"
+                          value={vipAgentTimeoutMin}
+                          onChange={(e) => setVipAgentTimeoutMin(e.target.value)}
+                          className="w-20 h-8 px-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded text-center focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none"
+                        />
+                        <span className="text-xs text-slate-600">phút</span>
+                      </div>
+                    </div>
+
                     {/* Thời gian chờ khách phản hồi */}
                     <div className="flex items-center gap-4">
                       <span className="text-xs font-medium text-slate-700 w-52">
@@ -529,6 +616,22 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Hành động (Fallback) VIP riêng */}
+                <div className="pt-3 border-t border-orange-100">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Hành động (Fallback) VIP <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={vipFallbackAction}
+                    onChange={(e) => setVipFallbackAction(e.target.value)}
+                    className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer"
+                  >
+                    {CHAT_FALLBACK_OPTIONS.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
                 </div>
 
               </div>
@@ -561,7 +664,19 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                     </label>
                     <select
                       value={stdRoutingMethod}
-                      onChange={(e) => setStdRoutingMethod(e.target.value)}
+                      onChange={(e) => {
+                        const newMethod = e.target.value;
+                        setStdRoutingMethod(newMethod);
+                        if (newMethod === 'Nhóm kỹ năng') {
+                          if (!CHAT_SKILL_GROUPS.includes(stdSkillName)) {
+                            setStdSkillName(CHAT_SKILL_GROUPS[0]);
+                          }
+                        } else {
+                          if (!CHAT_SKILL_NAMES.includes(stdSkillName)) {
+                            setStdSkillName(CHAT_SKILL_NAMES[0]);
+                          }
+                        }
+                      }}
                       className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer"
                     >
                       {CHAT_ROUTING_METHODS.map((m) => (
@@ -572,14 +687,14 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tên kỹ năng <span className="text-red-500">*</span>
+                      {stdRoutingMethod === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'} <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={stdSkillName}
                       onChange={(e) => setStdSkillName(e.target.value)}
                       className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer"
                     >
-                      {CHAT_SKILL_NAMES.map((s) => (
+                      {(stdRoutingMethod === 'Nhóm kỹ năng' ? CHAT_SKILL_GROUPS : CHAT_SKILL_NAMES).map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
@@ -685,6 +800,24 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                       </div>
                     </div>
 
+                    {/* Thời gian chờ Agent phản hồi */}
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-medium text-slate-700 w-52">
+                        Thời gian chờ Agent phản hồi
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="1"
+                          max="180"
+                          value={stdAgentTimeoutMin}
+                          onChange={(e) => setStdAgentTimeoutMin(e.target.value)}
+                          className="w-20 h-8 px-2.5 text-xs text-slate-800 bg-white border border-slate-300 rounded text-center focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none"
+                        />
+                        <span className="text-xs text-slate-600">phút</span>
+                      </div>
+                    </div>
+
                     {/* Thời gian chờ khách phản hồi */}
                     <div className="flex items-center gap-4">
                       <span className="text-xs font-medium text-slate-700 w-52">
@@ -705,24 +838,24 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                   </div>
                 </div>
 
+                {/* Hành động (Fallback) Thường riêng */}
+                <div className="pt-3 border-t border-slate-200">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Hành động (Fallback) Thường <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={stdFallbackAction}
+                    onChange={(e) => setStdFallbackAction(e.target.value)}
+                    className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer"
+                  >
+                    {CHAT_FALLBACK_OPTIONS.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
+
               </div>
             )}
-          </div>
-
-          {/* Field: Hành động (Fallback) * */}
-          <div className="pt-1">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Hành động (Fallback) <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={fallbackAction}
-              onChange={(e) => setFallbackAction(e.target.value)}
-              className="w-full h-9.5 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer"
-            >
-              {CHAT_FALLBACK_OPTIONS.map((f) => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
           </div>
 
           {/* Footer Bar */}

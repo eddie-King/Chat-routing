@@ -79,13 +79,24 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
             </div>
           </div>
 
-          {/* Trường Input - Giá trị outcome từ Cấu hình Input ví dụ: INPUT_FB_TECH_SUPPORT */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Input
-            </label>
-            <div className="w-full h-9.5 px-3 flex items-center text-xs font-mono text-slate-800 bg-slate-50 border border-slate-200 rounded">
-              {item.inputOutput || 'INPUT_FB_TECH_SUPPORT'}
+          {/* Trường Input & Lịch làm việc (để chung) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Input
+              </label>
+              <div className="w-full h-9.5 px-3 flex items-center text-xs font-mono text-slate-800 bg-slate-50 border border-slate-200 rounded">
+                {item.inputOutput || 'INPUT_FB_TECH_SUPPORT'}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Lịch làm việc
+              </label>
+              <div className="w-full h-9.5 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded">
+                {item.workingSchedule || 'Giờ hành chính tiêu chuẩn (T2 - T6: 08:00 - 17:30, T7 sáng)'}
+              </div>
             </div>
           </div>
 
@@ -126,7 +137,7 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tên kỹ năng
+                      {item.vipRoutingMethod === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'}
                     </label>
                     <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
                       {item.vipSkillName || 'Chưa thiết lập'}
@@ -194,12 +205,32 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
 
                     <div className="flex items-center gap-4">
                       <span className="text-xs font-medium text-slate-700 w-56">
+                        Thời gian chờ Agent phản hồi:
+                      </span>
+                      <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
+                        {item.vipAgentTimeoutMin ?? item.agentTimeoutMin ?? 2} phút
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-medium text-slate-700 w-56">
                         Thời gian chờ khách phản hồi:
                       </span>
                       <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
                         {(item.vipCustomerTimeoutSec && item.vipCustomerTimeoutSec >= 30 ? Math.round(item.vipCustomerTimeoutSec / 60) : item.vipCustomerTimeoutSec) ?? 3} phút
                       </span>
                     </div>
+                  </div>
+                </div>
+
+                {/* Hành động (Fallback) VIP */}
+                <div className="pt-3 border-t border-orange-100">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Hành động (Fallback) VIP
+                  </label>
+                  <div className="w-full h-9 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded">
+                    <Bot className="w-3.5 h-3.5 text-[#f25621] mr-2" />
+                    {item.vipFallbackAction || item.fallbackAction || 'AI Bot Assistant (UniBot AI)'}
                   </div>
                 </div>
 
@@ -235,7 +266,7 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tên kỹ năng
+                      {item.stdRoutingMethod === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'}
                     </label>
                     <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
                       {item.stdSkillName || 'Chưa thiết lập'}
@@ -303,6 +334,15 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
 
                     <div className="flex items-center gap-4">
                       <span className="text-xs font-medium text-slate-700 w-56">
+                        Thời gian chờ Agent phản hồi:
+                      </span>
+                      <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
+                        {item.stdAgentTimeoutMin ?? item.agentTimeoutMin ?? 3} phút
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs font-medium text-slate-700 w-56">
                         Thời gian chờ khách phản hồi:
                       </span>
                       <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
@@ -312,19 +352,19 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
                   </div>
                 </div>
 
+                {/* Hành động (Fallback) Thường */}
+                <div className="pt-3 border-t border-slate-200">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Hành động (Fallback) Thường
+                  </label>
+                  <div className="w-full h-9 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded">
+                    <Bot className="w-3.5 h-3.5 text-[#f25621] mr-2" />
+                    {item.stdFallbackAction || item.fallbackAction || 'Chuyển Ticket Offline (Form liên hệ)'}
+                  </div>
+                </div>
+
               </div>
             )}
-          </div>
-
-          {/* Field: Hành động (Fallback) */}
-          <div className="pt-1">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Hành động (Fallback)
-            </label>
-            <div className="w-full h-9.5 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded">
-              <Bot className="w-3.5 h-3.5 text-[#f25621] mr-2" />
-              {item.fallbackAction}
-            </div>
           </div>
 
           {/* Metadata Bar */}

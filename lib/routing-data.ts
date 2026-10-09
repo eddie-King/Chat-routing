@@ -3,6 +3,9 @@ export interface RoutingConfigItem {
   extNumber: string;
   name?: string;
   
+  // Working Schedule (Chung cho quy tắc định tuyến)
+  workingSchedule?: string;
+
   // VIP Routing
   routingVIP: 'Có' | 'Không';
   vipCustomerGroup?: string;
@@ -11,6 +14,7 @@ export interface RoutingConfigItem {
   vipRecentAgent?: boolean;
   vipRecentScope?: string;
   vipRecentHours?: number;
+  vipFallbackExt?: string; // Fallback riêng cho luồng VIP
 
   // Standard Routing
   routingStandard: 'Có' | 'Không';
@@ -19,8 +23,9 @@ export interface RoutingConfigItem {
   stdRecentAgent?: boolean;
   stdRecentScope?: string;
   stdRecentHours?: number;
+  stdFallbackExt?: string; // Fallback riêng cho luồng Thường
 
-  // Fallback
+  // Fallback chung (tương thích)
   fallbackExt: string;
 
   // Queue Configuration
@@ -44,6 +49,7 @@ export const INITIAL_ROUTING_CONFIGS: RoutingConfigItem[] = [
     id: 'cfg-1',
     extNumber: '9006 - IVR_WaitRouteAgent-CS',
     name: 'Tổng đài Tiếp nhận & Định tuyến Agent Chăm sóc Khách hàng',
+    workingSchedule: 'Giờ hành chính tiêu chuẩn (T2 - T6: 08:00 - 17:30, T7 sáng)',
     routingVIP: 'Có',
     vipCustomerGroup: 'Tất cả khách hàng VIP',
     vipRoutingMethod: 'Kỹ năng',
@@ -51,12 +57,14 @@ export const INITIAL_ROUTING_CONFIGS: RoutingConfigItem[] = [
     vipRecentAgent: true,
     vipRecentScope: 'Tất cả',
     vipRecentHours: 1,
+    vipFallbackExt: '1500 - VIP_Desk',
     routingStandard: 'Có',
     stdRoutingMethod: 'Kỹ năng',
     stdSkillName: 'Chăm sóc khách hàng Tiếng Việt',
     stdRecentAgent: false,
     stdRecentScope: 'Tất cả',
     stdRecentHours: 1,
+    stdFallbackExt: '1100 - ACD-1100',
     fallbackExt: '1100 - ACD-1100',
     queueSize: 10,
     queueWaitTime: 30,
@@ -74,6 +82,7 @@ export const INITIAL_ROUTING_CONFIGS: RoutingConfigItem[] = [
     id: 'cfg-2',
     extNumber: '9000 - IVR_Intro',
     name: 'Tổng đài Chào & Lựa chọn Phím IVR chính',
+    workingSchedule: 'Lịch trực CSKH 24/7 (Toàn thời gian)',
     routingVIP: 'Có',
     vipCustomerGroup: 'Tập VIP Diamond & Platinum',
     vipRoutingMethod: 'Kỹ năng',
@@ -81,6 +90,7 @@ export const INITIAL_ROUTING_CONFIGS: RoutingConfigItem[] = [
     vipRecentAgent: true,
     vipRecentScope: 'Tất cả',
     vipRecentHours: 2,
+    vipFallbackExt: '1500 - VIP_Desk',
     routingStandard: 'Không',
     fallbackExt: '1100 - ACD-1100',
     queueSize: 15,
@@ -99,6 +109,7 @@ export const INITIAL_ROUTING_CONFIGS: RoutingConfigItem[] = [
     id: 'cfg-3',
     extNumber: '9001 - IVR_Sales',
     name: 'Định tuyến Tư vấn & Bán hàng Trực tuyến',
+    workingSchedule: 'Lịch Bán hàng & Tư vấn Online (08:00 - 22:00 Hàng ngày)',
     routingVIP: 'Có',
     vipCustomerGroup: 'Khách hàng Doanh nghiệp SME',
     vipRoutingMethod: 'Kỹ năng',
@@ -106,12 +117,14 @@ export const INITIAL_ROUTING_CONFIGS: RoutingConfigItem[] = [
     vipRecentAgent: true,
     vipRecentScope: 'Cùng nhóm',
     vipRecentHours: 3,
+    vipFallbackExt: '1500 - VIP_Desk',
     routingStandard: 'Có',
     stdRoutingMethod: 'Kỹ năng',
     stdSkillName: 'Tư vấn Bán hàng & Chốt hợp đồng',
     stdRecentAgent: true,
     stdRecentScope: 'Tất cả',
     stdRecentHours: 1,
+    stdFallbackExt: '1200 - Sales_Queue',
     fallbackExt: '1200 - Sales_Queue',
     queueSize: 20,
     queueWaitTime: 25,
@@ -196,10 +209,7 @@ export const VIP_CUSTOMER_GROUPS = [
 
 export const ROUTING_METHODS = [
   'Kỹ năng',
-  'Nhóm kỹ năng',
-  'Trực tiếp Agent',
-  'Vòng tròn (Round Robin)',
-  'Thời gian rảnh lâu nhất (Longest Idle)'
+  'Nhóm kỹ năng'
 ];
 
 export const SKILL_NAMES = [

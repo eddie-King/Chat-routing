@@ -9,9 +9,11 @@ import {
   VIP_CUSTOMER_GROUPS,
   ROUTING_METHODS,
   SKILL_NAMES,
+  SKILL_GROUPS,
   AGENT_SCOPE_OPTIONS,
   AVAILABLE_AGENTS 
 } from '@/lib/routing-data';
+import { getAvailableWorkingSchedules } from '@/lib/working-hours-data';
 
 interface RoutingModalProps {
   isOpen: boolean;
@@ -51,6 +53,12 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
   // Top Field
   const [extNumber, setExtNumber] = useState(initialData?.extNumber || '9006 - IVR_WaitRouteAgent-CS');
   
+  // Lịch làm việc (Chung cho quy tắc định tuyến)
+  const [scheduleOptions] = useState<string[]>(() => getAvailableWorkingSchedules());
+  const [workingSchedule, setWorkingSchedule] = useState<string>(
+    initialData?.workingSchedule || scheduleOptions[0] || 'Giờ hành chính tiêu chuẩn (T2 - T6: 08:00 - 17:30, T7 sáng)'
+  );
+
   // VIP Routing Section
   const [isVipRouting, setIsVipRouting] = useState(initialData ? initialData.routingVIP === 'Có' : true);
   const [vipCustomerGroup, setVipCustomerGroup] = useState(initialData?.vipCustomerGroup || VIP_CUSTOMER_GROUPS[0]);
@@ -59,6 +67,9 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
   const [vipRecentAgent, setVipRecentAgent] = useState(initialData?.vipRecentAgent ?? true);
   const [vipRecentScope, setVipRecentScope] = useState(initialData?.vipRecentScope || AGENT_SCOPE_OPTIONS[0]);
   const [vipRecentHours, setVipRecentHours] = useState(initialData?.vipRecentHours ?? 1);
+  const [vipFallbackExt, setVipFallbackExt] = useState<string>(
+    initialData?.vipFallbackExt || initialData?.fallbackExt || '1500 - VIP_Desk'
+  );
 
   // Standard Routing Section
   const [isStdRouting, setIsStdRouting] = useState(initialData ? initialData.routingStandard === 'Có' : true);
@@ -67,9 +78,12 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
   const [stdRecentAgent, setStdRecentAgent] = useState(initialData?.stdRecentAgent ?? false);
   const [stdRecentScope, setStdRecentScope] = useState(initialData?.stdRecentScope || AGENT_SCOPE_OPTIONS[0]);
   const [stdRecentHours, setStdRecentHours] = useState(initialData?.stdRecentHours ?? 1);
+  const [stdFallbackExt, setStdFallbackExt] = useState<string>(
+    initialData?.stdFallbackExt || initialData?.fallbackExt || FALLBACK_OPTIONS[0]
+  );
 
-  // Fallback
-  const [fallbackExt, setFallbackExt] = useState(initialData?.fallbackExt || FALLBACK_OPTIONS[0]);
+  // Fallback chung
+  const fallbackExt = isVipRouting ? vipFallbackExt : stdFallbackExt;
 
   // Queue Configuration
   const [queueSize, setQueueSize] = useState<number | string>(initialData?.queueSize ?? 10);
@@ -98,6 +112,7 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
       id: initialData ? initialData.id : `cfg-${Date.now()}`,
       extNumber,
       name: initialData?.name || `Định tuyến cuộc gọi - ${extNumber.split(' - ')[1] || extNumber}`,
+      workingSchedule,
       routingVIP: isVipRouting ? 'Có' : 'Không',
       vipCustomerGroup: isVipRouting ? vipCustomerGroup : undefined,
       vipRoutingMethod: isVipRouting ? vipRoutingMethod : undefined,
@@ -105,6 +120,7 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
       vipRecentAgent: isVipRouting ? vipRecentAgent : false,
       vipRecentScope: isVipRouting && vipRecentAgent ? vipRecentScope : undefined,
       vipRecentHours: isVipRouting && vipRecentAgent ? Number(vipRecentHours) : undefined,
+      vipFallbackExt: isVipRouting ? vipFallbackExt : undefined,
 
       routingStandard: isStdRouting ? 'Có' : 'Không',
       stdRoutingMethod: isStdRouting ? stdRoutingMethod : undefined,
@@ -112,8 +128,9 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
       stdRecentAgent: isStdRouting ? stdRecentAgent : false,
       stdRecentScope: isStdRouting && stdRecentAgent ? stdRecentScope : undefined,
       stdRecentHours: isStdRouting && stdRecentAgent ? Number(stdRecentHours) : undefined,
+      stdFallbackExt: isStdRouting ? stdFallbackExt : undefined,
 
-      fallbackExt,
+      fallbackExt: isVipRouting ? vipFallbackExt : (isStdRouting ? stdFallbackExt : FALLBACK_OPTIONS[0]),
       queueSize: Number(queueSize) || 10,
       queueWaitTime: Number(queueWaitTime) || 30,
       ringTime: Number(ringTime) || 20,
@@ -148,23 +165,43 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[82vh] overflow-y-auto">
-          {/* Top Field: Đầu số Ext * */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Đầu số Ext <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={extNumber}
-              onChange={(e) => setExtNumber(e.target.value)}
-              className="w-full h-9.5 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer"
-              required
-            >
-              {EXTENSION_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+          {/* Top Fields: Đầu số Ext * & Lịch làm việc * (để chung) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Đầu số Ext <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={extNumber}
+                onChange={(e) => setExtNumber(e.target.value)}
+                className="w-full h-9.5 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer"
+                required
+              >
+                {EXTENSION_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Lịch làm việc <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={workingSchedule}
+                onChange={(e) => setWorkingSchedule(e.target.value)}
+                className="w-full h-9.5 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer"
+                required
+              >
+                {scheduleOptions.map((sch) => (
+                  <option key={sch} value={sch}>
+                    {sch}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Section: Routing VIP */}
@@ -208,7 +245,19 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
                     </label>
                     <select
                       value={vipRoutingMethod}
-                      onChange={(e) => setVipRoutingMethod(e.target.value)}
+                      onChange={(e) => {
+                        const newMethod = e.target.value;
+                        setVipRoutingMethod(newMethod);
+                        if (newMethod === 'Nhóm kỹ năng') {
+                          if (!SKILL_GROUPS.includes(vipSkillName)) {
+                            setVipSkillName(SKILL_GROUPS[0]);
+                          }
+                        } else {
+                          if (!SKILL_NAMES.includes(vipSkillName)) {
+                            setVipSkillName(SKILL_NAMES[0]);
+                          }
+                        }
+                      }}
                       className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer"
                     >
                       {ROUTING_METHODS.map((m) => (
@@ -219,14 +268,14 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tên kỹ năng <span className="text-red-500">*</span>
+                      {vipRoutingMethod === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'} <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={vipSkillName}
                       onChange={(e) => setVipSkillName(e.target.value)}
                       className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer"
                     >
-                      {SKILL_NAMES.map((s) => (
+                      {(vipRoutingMethod === 'Nhóm kỹ năng' ? SKILL_GROUPS : SKILL_NAMES).map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
@@ -285,6 +334,22 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
                     </div>
                   )}
                 </div>
+
+                {/* Đầu số Ext (Fallback) VIP */}
+                <div className="pt-2 border-t border-blue-500/10">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Đầu số Ext (Fallback) VIP <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={vipFallbackExt}
+                    onChange={(e) => setVipFallbackExt(e.target.value)}
+                    className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer"
+                  >
+                    {FALLBACK_OPTIONS.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             )}
           </div>
@@ -315,7 +380,19 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
                     </label>
                     <select
                       value={stdRoutingMethod}
-                      onChange={(e) => setStdRoutingMethod(e.target.value)}
+                      onChange={(e) => {
+                        const newMethod = e.target.value;
+                        setStdRoutingMethod(newMethod);
+                        if (newMethod === 'Nhóm kỹ năng') {
+                          if (!SKILL_GROUPS.includes(stdSkillName)) {
+                            setStdSkillName(SKILL_GROUPS[0]);
+                          }
+                        } else {
+                          if (!SKILL_NAMES.includes(stdSkillName)) {
+                            setStdSkillName(SKILL_NAMES[0]);
+                          }
+                        }
+                      }}
                       className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer"
                     >
                       {ROUTING_METHODS.map((m) => (
@@ -326,14 +403,14 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tên kỹ năng <span className="text-red-500">*</span>
+                      {stdRoutingMethod === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'} <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={stdSkillName}
                       onChange={(e) => setStdSkillName(e.target.value)}
                       className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer"
                     >
-                      {SKILL_NAMES.map((s) => (
+                      {(stdRoutingMethod === 'Nhóm kỹ năng' ? SKILL_GROUPS : SKILL_NAMES).map((s) => (
                         <option key={s} value={s}>{s}</option>
                       ))}
                     </select>
@@ -392,24 +469,24 @@ function RoutingModalForm({ initialData, onClose, onSave }: FormInnerProps) {
                     </div>
                   )}
                 </div>
+
+                {/* Đầu số Ext (Fallback) Thường */}
+                <div className="pt-2 border-t border-slate-200">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Đầu số Ext (Fallback) Thường <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={stdFallbackExt}
+                    onChange={(e) => setStdFallbackExt(e.target.value)}
+                    className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer"
+                  >
+                    {FALLBACK_OPTIONS.map((f) => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             )}
-          </div>
-
-          {/* Field: Đầu số Ext (Fallback) * */}
-          <div className="pt-1">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Đầu số Ext (Fallback) <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={fallbackExt}
-              onChange={(e) => setFallbackExt(e.target.value)}
-              className="w-full h-9.5 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer"
-            >
-              {FALLBACK_OPTIONS.map((f) => (
-                <option key={f} value={f}>{f}</option>
-              ))}
-            </select>
           </div>
 
           {/* Section: Cấu hình hàng đợi */}

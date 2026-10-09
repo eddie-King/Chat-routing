@@ -14,7 +14,8 @@ import {
   ChevronDown,
   Calendar,
   Check,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { 
   RoutingConfigItem, 
@@ -465,9 +466,15 @@ export function RoutingConfigView({ onSwitchToChatRouting }: RoutingConfigViewPr
                       </div>
                     </td>
 
-                    {/* Đầu số Ext */}
+                    {/* Đầu số Ext & Lịch làm việc */}
                     <td className="py-2.5 px-4 font-medium text-slate-800">
-                      {item.extNumber}
+                      <div>{item.extNumber}</div>
+                      <div className="text-[10px] text-slate-500 font-normal flex items-center gap-1 mt-0.5" title={item.workingSchedule || 'Giờ hành chính tiêu chuẩn'}>
+                        <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate max-w-[220px]">
+                          {item.workingSchedule || 'Giờ hành chính tiêu chuẩn'}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Routing VIP */}

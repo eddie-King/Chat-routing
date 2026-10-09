@@ -556,10 +556,16 @@ export function ChatRoutingConfigView({
                       </div>
                     </td>
 
-                    {/* Hàng đợi Chat */}
+                    {/* Hàng đợi Chat & Lịch làm việc */}
                     <td className="py-2.5 px-3">
                       <div className="font-semibold text-slate-900 text-xs">
                         {item.queueName || item.name}
+                      </div>
+                      <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5" title={item.workingSchedule || 'Giờ hành chính tiêu chuẩn'}>
+                        <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span className="truncate max-w-[240px]">
+                          {item.workingSchedule || 'Giờ hành chính tiêu chuẩn'}
+                        </span>
                       </div>
                     </td>
 

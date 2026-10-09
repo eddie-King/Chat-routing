@@ -58,13 +58,24 @@ export function RoutingDetailModal({ isOpen, onClose, data, onEdit }: RoutingDet
         {/* Content Body */}
         <div className="p-6 space-y-6 max-h-[82vh] overflow-y-auto text-xs text-slate-700">
           
-          {/* Top Field: Đầu số Ext * */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Đầu số Ext <span className="text-red-500">*</span>
-            </label>
-            <div className="w-full h-9.5 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-300 rounded select-all">
-              {data.extNumber}
+          {/* Top Fields: Đầu số Ext & Lịch làm việc (để chung) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Đầu số Ext <span className="text-red-500">*</span>
+              </label>
+              <div className="w-full h-9.5 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-300 rounded select-all">
+                {data.extNumber}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Lịch làm việc <span className="text-red-500">*</span>
+              </label>
+              <div className="w-full h-9.5 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-300 rounded">
+                {data.workingSchedule || 'Giờ hành chính tiêu chuẩn (T2 - T6: 08:00 - 17:30, T7 sáng)'}
+              </div>
             </div>
           </div>
 
@@ -105,7 +116,7 @@ export function RoutingDetailModal({ isOpen, onClose, data, onEdit }: RoutingDet
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tên kỹ năng <span className="text-red-500">*</span>
+                      {data.vipRoutingMethod === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'} <span className="text-red-500">*</span>
                     </label>
                     <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded">
                       {data.vipSkillName || data.skillGroup || 'CSKH VIP Priority'}
@@ -147,6 +158,17 @@ export function RoutingDetailModal({ isOpen, onClose, data, onEdit }: RoutingDet
                     </div>
                   )}
                 </div>
+
+                {/* Đầu số Ext (Fallback) VIP */}
+                <div className="pt-2 border-t border-blue-500/10">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Đầu số Ext (Fallback) VIP <span className="text-red-500">*</span>
+                  </label>
+                  <div className="w-full h-9 px-3 flex items-center text-xs font-medium text-red-600 bg-red-50/50 border border-red-200 rounded">
+                    {data.vipFallbackExt || data.fallbackExt || '1500 - VIP_Desk'}
+                  </div>
+                </div>
+
               </div>
             )}
           </div>
@@ -179,7 +201,7 @@ export function RoutingDetailModal({ isOpen, onClose, data, onEdit }: RoutingDet
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tên kỹ năng <span className="text-red-500">*</span>
+                      {data.stdRoutingMethod === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'} <span className="text-red-500">*</span>
                     </label>
                     <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-300 rounded">
                       {data.stdSkillName || data.skillGroup || 'Chăm sóc khách hàng Tiếng Việt'}
@@ -221,18 +243,19 @@ export function RoutingDetailModal({ isOpen, onClose, data, onEdit }: RoutingDet
                     </div>
                   )}
                 </div>
+
+                {/* Đầu số Ext (Fallback) Thường */}
+                <div className="pt-2 border-t border-slate-200">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Đầu số Ext (Fallback) Thường <span className="text-red-500">*</span>
+                  </label>
+                  <div className="w-full h-9 px-3 flex items-center text-xs font-medium text-red-600 bg-red-50/50 border border-red-200 rounded">
+                    {data.stdFallbackExt || data.fallbackExt || '1100 - ACD-1100'}
+                  </div>
+                </div>
+
               </div>
             )}
-          </div>
-
-          {/* Field: Đầu số Ext (Fallback) * */}
-          <div className="pt-1">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Đầu số Ext (Fallback) <span className="text-red-500">*</span>
-            </label>
-            <div className="w-full h-9.5 px-3 flex items-center text-xs font-medium text-red-600 bg-red-50/50 border border-red-200 rounded">
-              {data.fallbackExt}
-            </div>
           </div>
 
           {/* Section: Cấu hình hàng đợi */}

@@ -13,6 +13,7 @@ import { PerformanceReportView } from '@/components/call-routing/PerformanceRepo
 import { SocialMediaConfigView } from '@/components/social-media/SocialMediaConfigView';
 import { AutoMessageConfigView } from '@/components/chat-routing/AutoMessageConfigView';
 import { ChatRoutingInputConfigView } from '@/components/chat-routing/ChatRoutingInputConfigView';
+import { WorkingHoursConfigView } from '@/components/call-routing/WorkingHoursConfigView';
 
 const VIEW_TITLES: Record<CallRoutingSubView, string> = {
   'routing-config': 'Cấu hình định tuyến Thoại (Call Routing)',
@@ -20,6 +21,7 @@ const VIEW_TITLES: Record<CallRoutingSubView, string> = {
   'chat-routing-input': 'Cấu hình Input Chat Routing (Type, Value, Output)',
   'social-media-channels': 'Cấu hình Kênh Mạng Xã Hội',
   'auto-messages-config': 'Cấu hình Tin nhắn Tự động (SLA Chờ & Đóng phiên)',
+  'working-hours-config': 'Chất lượng dịch vụ / Lịch làm việc',
   'skill-management': 'Quản lý kỹ năng',
   'skill-group': 'Quản lý nhóm kỹ năng',
   'special-numbers': 'Quản lý tập số đặc biệt',
@@ -87,6 +89,12 @@ export default function Home() {
               onSwitchToChatRouting={() => setCurrentView('chat-routing-config')}
               onSwitchToChatInputRouting={() => setCurrentView('chat-routing-input')}
               onSwitchToSocialMedia={() => setCurrentView('social-media-channels')}
+            />
+          )}
+          {currentView === 'working-hours-config' && (
+            <WorkingHoursConfigView 
+              onSwitchToCallRouting={() => setCurrentView('routing-config')}
+              onSwitchToChatRouting={() => setCurrentView('chat-routing-config')}
             />
           )}
           {currentView === 'skill-management' && <SkillManagementView />}

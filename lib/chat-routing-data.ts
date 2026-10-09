@@ -37,6 +37,9 @@ export interface ChatRoutingConfigItem {
   channel?: string; // Tương thích hiển thị: 'Tất cả kênh'
   name?: string; // Tên hiển thị tương thích
 
+  // Working Schedule (Chung cho quy tắc định tuyến)
+  workingSchedule?: string;
+
   // VIP Routing
   routingVIP: 'Có' | 'Không';
   vipCustomerGroup?: string;
@@ -45,10 +48,12 @@ export interface ChatRoutingConfigItem {
   vipRecentAgent?: boolean;
   vipRecentScope?: string;
   vipRecentHours?: number;
+  vipFallbackAction?: string; // Hành động Fallback VIP
   // Cấu hình hàng đợi VIP riêng
   vipQueueSize?: number; // phiên chat
-  vipQueueWaitTime?: number; // giây
-  vipCustomerTimeoutSec?: number; // giây
+  vipQueueWaitTime?: number; // phút
+  vipAgentTimeoutMin?: number; // phút - Thời gian chờ Agent phản hồi
+  vipCustomerTimeoutSec?: number; // phút
   vipMaxConcurrentChats?: number; // phiên/agent
   vipAssignedAgents?: string[];
 
@@ -59,19 +64,22 @@ export interface ChatRoutingConfigItem {
   stdRecentAgent?: boolean;
   stdRecentScope?: string;
   stdRecentHours?: number;
+  stdFallbackAction?: string; // Hành động Fallback Thường
   // Cấu hình hàng đợi Thường riêng
   stdQueueSize?: number; // phiên chat
-  stdQueueWaitTime?: number; // giây
-  stdCustomerTimeoutSec?: number; // giây
+  stdQueueWaitTime?: number; // phút
+  stdAgentTimeoutMin?: number; // phút - Thời gian chờ Agent phản hồi
+  stdCustomerTimeoutSec?: number; // phút
   stdMaxConcurrentChats?: number; // phiên/agent
   stdAssignedAgents?: string[];
 
-  // Fallback
+  // Fallback chung (tương thích)
   fallbackAction: string;
 
   // Shared / fallback compatibility fields
   queueSize?: number;
   queueWaitTime?: number;
+  agentTimeoutMin?: number;
   customerTimeoutSec?: number;
   maxConcurrentChats?: number;
   assignedAgents?: string[];
@@ -247,9 +255,7 @@ export const CHAT_VIP_GROUPS = [
 
 export const CHAT_ROUTING_METHODS = [
   'Kỹ năng',
-  'Hạn mức phiên (Capacity-based)',
-  'Vòng tròn (Round Robin)',
-  'Tư vấn viên trực tiếp'
+  'Nhóm kỹ năng'
 ];
 
 export const CHAT_SKILL_NAMES = [
@@ -307,6 +313,9 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     intakeChannels: ['Facebook'],
     channel: 'Facebook - UCX Customer Support (+1)',
     
+    // Lịch làm việc chung
+    workingSchedule: 'Giờ hành chính tiêu chuẩn (T2 - T6: 08:00 - 17:30, T7 sáng)',
+
     // VIP Routing & Queue VIP
     routingVIP: 'Có',
     vipCustomerGroup: 'Tất cả khách hàng VIP',
@@ -315,8 +324,10 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     vipRecentAgent: true,
     vipRecentScope: 'Tất cả',
     vipRecentHours: 2,
+    vipFallbackAction: 'AI Bot Assistant (UniBot AI)',
     vipQueueSize: 15,
     vipQueueWaitTime: 2,
+    vipAgentTimeoutMin: 2,
     vipCustomerTimeoutSec: 3,
     vipMaxConcurrentChats: 3,
     vipAssignedAgents: ['204 - Đặng Mai Hương (VIP Desk)', '205 - Nguyễn Bảo Ngọc (Omni Agent)'],
@@ -328,8 +339,10 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     stdRecentAgent: false,
     stdRecentScope: 'Tất cả',
     stdRecentHours: 1,
+    stdFallbackAction: 'Chuyển Ticket Offline (Form liên hệ)',
     stdQueueSize: 30,
     stdQueueWaitTime: 5,
+    stdAgentTimeoutMin: 3,
     stdCustomerTimeoutSec: 5,
     stdMaxConcurrentChats: 4,
     stdAssignedAgents: ['201 - Lê Thanh Trúc (Web Lead)', '206 - Phan Văn Huy (Tech Helpdesk)'],
@@ -337,6 +350,7 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     fallbackAction: 'AI Bot Assistant (UniBot AI)',
     queueSize: 30,
     queueWaitTime: 5,
+    agentTimeoutMin: 3,
     customerTimeoutSec: 5,
     maxConcurrentChats: 4,
     assignedAgents: ['201 - Lê Thanh Trúc (Web Lead)', '205 - Nguyễn Bảo Ngọc (Omni Agent)', '206 - Phan Văn Huy (Tech Helpdesk)'],
@@ -365,6 +379,9 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     intakeChannels: ['Zalo'],
     channel: 'Zalo - UniSpace Official Account VIP',
     
+    // Lịch làm việc chung
+    workingSchedule: 'Lịch trực CSKH 24/7 (Toàn thời gian)',
+
     // VIP Routing & Queue VIP
     routingVIP: 'Có',
     vipCustomerGroup: 'Khách hàng Diamond & Priority',
@@ -373,8 +390,10 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     vipRecentAgent: true,
     vipRecentScope: 'Tất cả',
     vipRecentHours: 24,
+    vipFallbackAction: 'Hàng đợi tràn (QUEUE_CHAT_OVERFLOW)',
     vipQueueSize: 10,
     vipQueueWaitTime: 2,
+    vipAgentTimeoutMin: 2,
     vipCustomerTimeoutSec: 4,
     vipMaxConcurrentChats: 2,
     vipAssignedAgents: ['202 - Trần Đình Trọng (Zalo Specialist)', '204 - Đặng Mai Hương (VIP Desk)'],
@@ -385,6 +404,7 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     fallbackAction: 'Hàng đợi tràn (QUEUE_CHAT_OVERFLOW)',
     queueSize: 10,
     queueWaitTime: 2,
+    agentTimeoutMin: 2,
     customerTimeoutSec: 4,
     maxConcurrentChats: 2,
     assignedAgents: ['202 - Trần Đình Trọng (Zalo Specialist)', '204 - Đặng Mai Hương (VIP Desk)'],
@@ -413,16 +433,21 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     intakeChannels: ['Facebook'],
     channel: 'Facebook - UniSpace Tư vấn Bán hàng & Dịch vụ',
     
+    // Lịch làm việc chung
+    workingSchedule: 'Lịch Bán hàng & Tư vấn Online (08:00 - 22:00 Hàng ngày)',
+
     // VIP Routing
     routingVIP: 'Không',
 
     // Standard Routing & Queue Thường
     routingStandard: 'Có',
-    stdRoutingMethod: 'Hạn mức phiên (Capacity-based)',
-    stdSkillName: 'Tư vấn Dịch vụ & Chốt đơn Chat',
+    stdRoutingMethod: 'Nhóm kỹ năng',
+    stdSkillName: 'Tư vấn Dịch vụ & Bán hàng Online',
     stdRecentAgent: false,
+    stdFallbackAction: 'Chuyển Ticket Offline (Form liên hệ)',
     stdQueueSize: 35,
     stdQueueWaitTime: 5,
+    stdAgentTimeoutMin: 3,
     stdCustomerTimeoutSec: 5,
     stdMaxConcurrentChats: 5,
     stdAssignedAgents: ['203 - Hoàng Kim Oanh (FB Support)', '205 - Nguyễn Bảo Ngọc (Omni Agent)'],
@@ -430,6 +455,7 @@ export const INITIAL_CHAT_ROUTING_CONFIGS: ChatRoutingConfigItem[] = [
     fallbackAction: 'Chuyển Ticket Offline (Form liên hệ)',
     queueSize: 35,
     queueWaitTime: 5,
+    agentTimeoutMin: 3,
     customerTimeoutSec: 5,
     maxConcurrentChats: 5,
     assignedAgents: ['203 - Hoàng Kim Oanh (FB Support)', '205 - Nguyễn Bảo Ngọc (Omni Agent)'],

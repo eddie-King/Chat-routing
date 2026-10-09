@@ -31,6 +31,7 @@ export type CallRoutingSubView =
   | 'chat-routing-input'
   | 'social-media-channels'
   | 'auto-messages-config'
+  | 'working-hours-config'
   | 'skill-management'
   | 'skill-group'
   | 'special-numbers'
@@ -59,7 +60,7 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const isRoutingGroupActive = currentView === 'routing-config' || currentView === 'chat-routing-config' || currentView === 'chat-routing-input' || currentView === 'auto-messages-config';
+  const isRoutingGroupActive = currentView === 'routing-config' || currentView === 'chat-routing-config' || currentView === 'chat-routing-input' || currentView === 'auto-messages-config' || currentView === 'working-hours-config';
 
   return (
     <aside 
@@ -306,17 +307,27 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
 
                   {/* Cấu hình thời gian làm việc */}
                   <button
-                    className="w-full flex items-center gap-2 px-2 py-1 rounded text-left text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+                    onClick={() => onSelectView('working-hours-config')}
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-left transition-colors cursor-pointer ${
+                      currentView === 'working-hours-config'
+                        ? 'text-[#f25621] font-semibold bg-orange-50/60'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${currentView === 'working-hours-config' ? 'bg-[#f25621]' : 'bg-slate-300'}`}></span>
                     <span className="truncate">Cấu hình thời gian làm việc</span>
                   </button>
 
                   {/* Lịch làm việc */}
                   <button
-                    className="w-full flex items-center gap-2 px-2 py-1 rounded text-left text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
+                    onClick={() => onSelectView('working-hours-config')}
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-left transition-colors cursor-pointer ${
+                      currentView === 'working-hours-config'
+                        ? 'text-[#f25621] font-semibold bg-orange-50/60'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${currentView === 'working-hours-config' ? 'bg-[#f25621]' : 'bg-slate-300'}`}></span>
                     <span className="truncate">Lịch làm việc</span>
                   </button>
 
@@ -528,6 +539,20 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
                       <Clock className={`w-3.5 h-3.5 shrink-0 ${currentView === 'auto-messages-config' ? 'text-[#f25621]' : 'text-slate-400'}`} />
                       <span className="truncate">Tin nhắn tự động (SLA)</span>
                     </button>
+
+                    {/* Submenu 4: Cấu hình giờ làm việc */}
+                    <button
+                      onClick={() => onSelectView('working-hours-config')}
+                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-left transition-colors cursor-pointer text-xs ${
+                        currentView === 'working-hours-config'
+                          ? 'bg-orange-50 text-[#f25621] font-bold border-l-2 border-[#f25621]'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      }`}
+                      title="Cấu hình giờ làm việc (Working Hours & Schedules)"
+                    >
+                      <Calendar className={`w-3.5 h-3.5 shrink-0 ${currentView === 'working-hours-config' ? 'text-[#f25621]' : 'text-slate-400'}`} />
+                      <span className="truncate">Cấu hình giờ làm việc</span>
+                    </button>
                   </div>
                 )}
 
@@ -554,6 +579,13 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
                       className={`p-1.5 rounded ${currentView === 'chat-routing-input' ? 'bg-orange-100 text-[#f25621]' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       <Filter className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onSelectView('working-hours-config')}
+                      title="Cấu hình giờ làm việc"
+                      className={`p-1.5 rounded ${currentView === 'working-hours-config' ? 'bg-orange-100 text-[#f25621]' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}
