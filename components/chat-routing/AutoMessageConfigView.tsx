@@ -3,24 +3,17 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { 
   Clock, 
-  MessageSquare, 
   Check, 
-  PhoneCall, 
-  Share2, 
   CheckCircle2, 
   Plus, 
   Trash2, 
-  Search, 
-  X, 
   Copy, 
-  Filter, 
   ChevronDown
 } from 'lucide-react';
 import { 
   AutoMessageCaseItem, 
   AutoMessageTriggerType,
   INITIAL_AUTO_MESSAGE_CASES,
-  AUTO_MESSAGE_CATEGORIES,
   TRIGGER_TYPE_OPTIONS,
   COMMON_AUTO_MESSAGE_VARIABLES
 } from '@/lib/auto-message-data';
@@ -79,36 +72,43 @@ export function AutoMessageConfigView({
   onSwitchToChatInputRouting,
   onSwitchToSocialMedia
 }: AutoMessageConfigViewProps) {
-  // Chỉ lưu và hiển thị đúng 3 data sample theo yêu cầu
+  // Khởi tạo danh sách kịch bản với các điều kiện hợp lệ
   const [cases, setCases] = useState<AutoMessageCaseItem[]>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('unispace_auto_messages_v3_clean');
+        const saved = localStorage.getItem('unispace_auto_messages_v5_clean');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Giới hạn dữ liệu mẫu cũ nếu vượt quá 3
-            if (parsed.length > 3 && parsed.some(p => p.id === 'CSAT_SURVEY' || p.id === 'QUEUE_OVERLOAD' || p.id === 'AUTO_CLOSE')) {
-              const trimmed = INITIAL_AUTO_MESSAGE_CASES.slice(0, 3);
-              localStorage.setItem('unispace_auto_messages_v3_clean', JSON.stringify(trimmed));
-              return trimmed;
-            }
-            return parsed;
+            const validTypes = TRIGGER_TYPE_OPTIONS.map(t => t.type);
+            const sanitized = parsed.map(c => {
+              if (!validTypes.includes(c.trigger?.type)) {
+                return {
+                  ...c,
+                  trigger: {
+                    ...c.trigger,
+                    type: 'AUTO_CLOSE' as const,
+                    typeLabel: 'Tự động đóng phiên chat',
+                    summaryText: 'Tự động đóng phiên chat'
+                  }
+                };
+              }
+              return c;
+            });
+            return sanitized;
           }
         }
       } catch {
         // fallback
       }
     }
-    return INITIAL_AUTO_MESSAGE_CASES.slice(0, 3);
+    return INITIAL_AUTO_MESSAGE_CASES;
   });
 
   const [selectedCaseId, setSelectedCaseId] = useState<string>(() => {
-    return INITIAL_AUTO_MESSAGE_CASES[0]?.id || 'WELCOME_MSG';
+    return INITIAL_AUTO_MESSAGE_CASES[0]?.id || 'AUTO_CLOSE_CASE';
   });
 
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('Tất cả');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deleteTargetCase, setDeleteTargetCase] = useState<{ id: string; name: string } | null>(null);
 
@@ -119,16 +119,16 @@ export function AutoMessageConfigView({
     code: 'AUTO_NEW',
     name: '',
     description: '',
-    category: AUTO_MESSAGE_CATEGORIES.find(c => c !== 'Tất cả') || 'Lời chào',
+    category: 'Mặc định',
     enabled: true,
     priority: 1,
     isCustom: true,
     trigger: {
-      type: 'IMMEDIATE',
-      typeLabel: 'Ngay khi mở phiên chat (Sự kiện tức thì)',
-      value: 5,
+      type: 'AUTO_CLOSE',
+      typeLabel: 'Tự động đóng phiên chat',
+      value: 15,
       unit: 'phút',
-      summaryText: 'Ngay khi mở phiên chat'
+      summaryText: 'Tự động đóng phiên chat'
     },
     message: '',
     channels: ['Facebook', 'Zalo OA', 'Website LiveChat'],
@@ -156,7 +156,7 @@ export function AutoMessageConfigView({
     setCases(updatedCases);
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('unispace_auto_messages_v3_clean', JSON.stringify(updatedCases));
+        localStorage.setItem('unispace_auto_messages_v5_clean', JSON.stringify(updatedCases));
       } catch {
         // ignore
       }
@@ -180,16 +180,16 @@ export function AutoMessageConfigView({
       code: code,
       name: '',
       description: '',
-      category: AUTO_MESSAGE_CATEGORIES.find(c => c !== 'Tất cả') || 'Lời chào',
+      category: 'Mặc định',
       enabled: true,
       priority: cases.length + 1,
       isCustom: true,
       trigger: {
-        type: 'IMMEDIATE',
-        typeLabel: 'Ngay khi mở phiên chat (Sự kiện tức thì)',
-        value: 5,
+        type: 'AUTO_CLOSE',
+        typeLabel: 'Tự động đóng phiên chat',
+        value: 15,
         unit: 'phút',
-        summaryText: 'Ngay khi mở phiên chat'
+        summaryText: 'Tự động đóng phiên chat'
       },
       message: '',
       channels: ['Facebook', 'Zalo OA', 'Website LiveChat'],
@@ -312,21 +312,6 @@ export function AutoMessageConfigView({
     }
   };
 
-  const filteredCases = useMemo(() => {
-    return cases.filter(item => {
-      if (selectedCategory !== 'Tất cả' && item.category !== selectedCategory) {
-        return false;
-      }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        return item.name.toLowerCase().includes(q) || 
-               item.message.toLowerCase().includes(q) || 
-               item.trigger.summaryText.toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [cases, selectedCategory, searchQuery]);
-
   const previewRenderedMessage = useMemo(() => {
     if (!activeCase) return '';
     let text = activeCase.message;
@@ -373,55 +358,12 @@ export function AutoMessageConfigView({
         </div>
       </div>
 
-      {/* Search and Category Filter Bar */}
-      <div className="bg-white rounded-lg border border-slate-200 p-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shadow-2xs">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-4 h-4 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm kiếm kịch bản..."
-            className="w-full h-8.5 pl-8 pr-3 text-xs bg-slate-50 border border-slate-300 rounded focus:bg-white focus:border-[#f25621] outline-none"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 overflow-x-auto">
-          {AUTO_MESSAGE_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-2.5 py-1 rounded text-xs whitespace-nowrap cursor-pointer border transition-colors ${
-                selectedCategory === cat
-                  ? 'bg-slate-800 text-white border-slate-800 font-medium'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        <div className="text-xs text-slate-500 shrink-0">
-          Tổng: <span className="font-semibold text-slate-800">{cases.length}</span> kịch bản
-        </div>
-      </div>
-
       {/* Bố cục 2 cột: Danh sách (Trái) & Chi tiết (Phải) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         
         {/* CỘT TRÁI (40%): Danh sách kịch bản gọn gàng */}
         <div className="lg:col-span-5 space-y-2">
-          {filteredCases.map((item, idx) => {
+          {cases.map((item, idx) => {
             const isSelected = selectedCase?.id === item.id;
             return (
               <div
@@ -548,39 +490,19 @@ export function AutoMessageConfigView({
                 </div>
               </div>
 
-              {/* Tên & Danh mục */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                <div className="sm:col-span-8">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Tên kịch bản <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={activeCase.name}
-                    onChange={(e) => updateActiveCase(c => ({ ...c, name: e.target.value }))}
-                    placeholder={isCreatingNew ? "VD: Thông báo bảo trì hệ thống" : "Nhập tên kịch bản..."}
-                    className="w-full h-8.5 px-3 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none"
-                    autoFocus={isCreatingNew}
-                  />
-                </div>
-
-                <div className="sm:col-span-4">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Danh mục <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={activeCase.category}
-                      onChange={(e) => updateActiveCase(c => ({ ...c, category: e.target.value }))}
-                      className="w-full h-8.5 px-3 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none appearance-none cursor-pointer"
-                    >
-                      {AUTO_MESSAGE_CATEGORIES.filter(c => c !== 'Tất cả').map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                </div>
+              {/* Tên kịch bản */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Tên kịch bản <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={activeCase.name}
+                  onChange={(e) => updateActiveCase(c => ({ ...c, name: e.target.value }))}
+                  placeholder={isCreatingNew ? "VD: Thông báo bảo trì hệ thống" : "Nhập tên kịch bản..."}
+                  className="w-full h-8.5 px-3 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none"
+                  autoFocus={isCreatingNew}
+                />
               </div>
 
               {/* Điều kiện kích hoạt */}

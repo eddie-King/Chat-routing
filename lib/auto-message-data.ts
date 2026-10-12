@@ -1,12 +1,12 @@
 export type AutoMessageTriggerType = 
-  | 'IMMEDIATE'            // Ngay khi khách mở phiên chat / gửi tin nhắn đầu tiên
-  | 'WAIT_TIMEOUT'         // Sau khi chờ tiếp nhận quá thời gian (phút/giây)
-  | 'OFF_HOURS'            // Khi gửi tin nhắn ngoài khung giờ làm việc
-  | 'INACTIVITY_REMINDER'  // Nhắc nhở khi khách không tương tác sau khoảng thời gian
-  | 'AUTO_CLOSE'           // Tự động đóng phiên sau khoảng thời gian không phản hồi
-  | 'QUEUE_OVERLOAD'       // Khi số lượng khách chờ trong hàng đợi vượt ngưỡng
-  | 'SESSION_CLOSED'       // Ngay khi kết thúc phiên chat (Khảo sát CSAT / Lời cảm ơn)
-  | 'CUSTOM';              // Điều kiện tùy chỉnh khác
+  | 'AUTO_CLOSE'           // Tự động đóng phiên chat
+  | 'WAIT_TIMEOUT'         // Quá thời gian chờ tiếp nhận
+  | 'OFF_HOURS'            // Ngoài giờ làm việc
+  | 'SESSION_CLOSED'       // Kết thúc phiên chat
+  | 'IMMEDIATE'            // Dành cho tương thích ngược nếu có
+  | 'INACTIVITY_REMINDER'
+  | 'QUEUE_OVERLOAD'
+  | 'CUSTOM';
 
 export interface AutoMessageTriggerConfig {
   type: AutoMessageTriggerType;
@@ -56,15 +56,16 @@ export const ALL_AUTO_MESSAGE_CHANNELS = [
   'SMS'
 ] as const;
 
+// CHỈ GIỮ LẠI 4 ĐIỀU KIỆN THEO YÊU CẦU:
+// 1. Tự động đóng phiên chat
+// 2. Quá thời gian chờ tiếp nhận
+// 3. Ngoài giờ làm việc
+// 4. Kết thúc phiên chat
 export const TRIGGER_TYPE_OPTIONS: { type: AutoMessageTriggerType; label: string; defaultUnit?: 'giây' | 'phút' | 'giờ' | 'khách' }[] = [
-  { type: 'IMMEDIATE', label: 'Ngay khi mở phiên chat (Sự kiện tức thì)' },
-  { type: 'WAIT_TIMEOUT', label: 'Quá thời gian chờ tiếp nhận (Theo thời gian chờ)', defaultUnit: 'phút' },
-  { type: 'OFF_HOURS', label: 'Ngoài giờ làm việc (Theo khung giờ)' },
-  { type: 'QUEUE_OVERLOAD', label: 'Hàng đợi quá tải (Hệ thống tự động tính)' },
-  { type: 'INACTIVITY_REMINDER', label: 'Khách không tương tác (Theo thời gian chờ)', defaultUnit: 'phút' },
-  { type: 'AUTO_CLOSE', label: 'Tự động đóng phiên (Theo thời gian chờ)', defaultUnit: 'phút' },
-  { type: 'SESSION_CLOSED', label: 'Khi kết thúc phiên chat (Sự kiện tức thì)' },
-  { type: 'CUSTOM', label: 'Điều kiện tùy chỉnh khác' }
+  { type: 'AUTO_CLOSE', label: 'Tự động đóng phiên chat', defaultUnit: 'phút' },
+  { type: 'WAIT_TIMEOUT', label: 'Quá thời gian chờ tiếp nhận', defaultUnit: 'phút' },
+  { type: 'OFF_HOURS', label: 'Ngoài giờ làm việc' },
+  { type: 'SESSION_CLOSED', label: 'Kết thúc phiên chat' }
 ];
 
 export const COMMON_AUTO_MESSAGE_VARIABLES: AutoMessageVariable[] = [
@@ -76,28 +77,30 @@ export const COMMON_AUTO_MESSAGE_VARIABLES: AutoMessageVariable[] = [
   { code: '{GIO_LAM_VIEC}', label: 'Khung giờ làm việc', sampleValue: '08:00 - 22:00' }
 ];
 
-// CHỈ GIỮ LẠI ĐÚNG 3 DATA SAMPLE THEO YÊU CẦU
+// DATA MẪU TƯƠNG ỨNG CÁC ĐIỀU KIỆN KÍCH HOẠT HỢP LỆ
 export const INITIAL_AUTO_MESSAGE_CASES: AutoMessageCaseItem[] = [
   {
-    id: 'WELCOME_MSG',
-    code: 'AUTO_WELCOME',
-    name: 'Lời chào khi bắt đầu chat',
-    description: 'Gửi ngay khi khách mở phiên chat',
-    category: 'Lời chào',
+    id: 'AUTO_CLOSE_CASE',
+    code: 'AUTO_CLOSE',
+    name: 'Tự động đóng phiên chat',
+    description: 'Tự động đóng phiên khi khách hàng không tương tác quá thời gian chờ',
+    category: 'SLA & Chờ',
     enabled: true,
     priority: 1,
     trigger: {
-      type: 'IMMEDIATE',
-      typeLabel: 'Ngay lập tức',
-      summaryText: 'Ngay khi mở phiên chat'
+      type: 'AUTO_CLOSE',
+      typeLabel: 'Tự động đóng phiên chat',
+      value: 15,
+      unit: 'phút',
+      summaryText: 'Tự động đóng phiên chat'
     },
-    message: 'Xin chào {TEN_KHACH_HANG}! UniSpace đã nhận được tin nhắn của bạn. Tư vấn viên sẽ phản hồi trong giây lát.',
+    message: 'Phiên trò chuyện đã được tự động kết thúc do hết thời gian chờ phản hồi. Nếu cần hỗ trợ thêm, quý khách vui lòng gửi lại tin nhắn. Hotline: {HOTLINE}.',
     channels: ['Facebook', 'Zalo OA', 'Website LiveChat'],
     variables: [
       { code: '{TEN_KHACH_HANG}', label: 'Tên khách hàng', sampleValue: 'Nguyễn Văn An' },
       { code: '{HOTLINE}', label: 'Hotline', sampleValue: '1900 6868' }
     ],
-    actionTag: 'Khởi tạo phiên tiếp nhận'
+    actionTag: 'Tự động đóng phiên'
   },
   {
     id: 'WAIT_SLA',
@@ -109,10 +112,10 @@ export const INITIAL_AUTO_MESSAGE_CASES: AutoMessageCaseItem[] = [
     priority: 2,
     trigger: {
       type: 'WAIT_TIMEOUT',
-      typeLabel: 'Thời gian chờ',
+      typeLabel: 'Quá thời gian chờ tiếp nhận',
       value: 5,
       unit: 'phút',
-      summaryText: 'Sau 5 phút chờ'
+      summaryText: 'Quá thời gian chờ tiếp nhận'
     },
     message: 'Kính chào {TEN_KHACH_HANG}, hệ thống đang sắp xếp tư vấn viên hỗ trợ bạn. Xin vui lòng giữ kết nối trong giây lát. Hotline: {HOTLINE}.',
     channels: ['Facebook', 'Zalo OA', 'Website LiveChat'],
@@ -133,10 +136,10 @@ export const INITIAL_AUTO_MESSAGE_CASES: AutoMessageCaseItem[] = [
     priority: 3,
     trigger: {
       type: 'OFF_HOURS',
-      typeLabel: 'Ngoài giờ',
+      typeLabel: 'Ngoài giờ làm việc',
       timeFrom: '22:00',
       timeTo: '08:00',
-      summaryText: 'Ngoài giờ: 22:00 - 08:00'
+      summaryText: 'Ngoài giờ làm việc'
     },
     message: 'Kính chào {TEN_KHACH_HANG}, hiện tại đã hết giờ làm việc trực tuyến ({GIO_LAM_VIEC}). Chuyên viên sẽ phản hồi vào đầu ca sáng mai. Hotline: {HOTLINE}.',
     channels: ['Facebook', 'Zalo OA', 'Website LiveChat'],
@@ -146,5 +149,26 @@ export const INITIAL_AUTO_MESSAGE_CASES: AutoMessageCaseItem[] = [
       { code: '{HOTLINE}', label: 'Hotline', sampleValue: '1900 6868' }
     ],
     actionTag: 'Tạo phiếu Offline'
+  },
+  {
+    id: 'SESSION_CLOSED_CASE',
+    code: 'AUTO_SESSION_CLOSED',
+    name: 'Kết thúc phiên chat',
+    description: 'Gửi lời cảm ơn khi kết thúc phiên chat',
+    category: 'Lời chào',
+    enabled: true,
+    priority: 4,
+    trigger: {
+      type: 'SESSION_CLOSED',
+      typeLabel: 'Kết thúc phiên chat',
+      summaryText: 'Kết thúc phiên chat'
+    },
+    message: 'Cảm ơn quý khách {TEN_KHACH_HANG} đã liên hệ với UniSpace. Chúc quý khách một ngày làm việc hiệu quả và vui vẻ! Hotline: {HOTLINE}.',
+    channels: ['Facebook', 'Zalo OA', 'Website LiveChat'],
+    variables: [
+      { code: '{TEN_KHACH_HANG}', label: 'Tên khách hàng', sampleValue: 'Nguyễn Văn An' },
+      { code: '{HOTLINE}', label: 'Hotline', sampleValue: '1900 6868' }
+    ],
+    actionTag: 'Kết thúc phiên chat'
   }
 ];
