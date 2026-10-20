@@ -1,0 +1,6 @@
+{
+  "summary": "Kế hoạch triển khai nâng cấp màn hình Quản lý tập số đặc biệt:\n- Bổ sung trường Kênh áp dụng (Kênh Call / Kênh Chat) trong modal Tạo mới/Chỉnh sửa tập khách hàng VIP\n- Tinh gọn bảng khách hàng trong modal thêm vào tập, chỉ hiển thị 4 trường: Mã KH, Số điện thoại, Hạng KH, Email\n- Bổ sung tính năng Import khách hàng ngoài hệ thống (hỗ trợ cả file Excel/CSV và nhập trực tiếp), tự động thích ứng theo kênh áp dụng: import Số điện thoại cho Kênh Call và UserID (phân biệt cột Zalo/Facebook) cho Kênh Chat",
+  "updatedAt": "2026-10-20T01:46:36.542398411Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

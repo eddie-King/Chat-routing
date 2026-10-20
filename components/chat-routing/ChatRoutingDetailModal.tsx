@@ -58,24 +58,13 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
         {/* Content Body */}
         <div className="p-6 space-y-6 max-h-[82vh] overflow-y-auto text-xs text-slate-700">
           
-          {/* Top Fields: Tên hàng đợi Chat & Mã hàng đợi */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Tên hàng đợi Chat (Queue Name)
-              </label>
-              <div className="w-full min-h-9.5 px-3 py-2 flex items-center text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded">
-                {item.queueName || item.name}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Mã hàng đợi Chat (Queue Code)
-              </label>
-              <div className="w-full h-9.5 px-3 flex items-center text-xs font-mono font-bold text-[#f25621] bg-orange-50/50 border border-orange-200 rounded">
-                {item.queueCode}
-              </div>
+          {/* Tên hàng đợi Chat */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Tên hàng đợi Chat (Queue Name)
+            </label>
+            <div className="w-full min-h-9.5 px-3 py-2 flex items-center text-xs font-semibold text-slate-900 bg-slate-50 border border-slate-200 rounded">
+              {item.queueName || item.name}
             </div>
           </div>
 

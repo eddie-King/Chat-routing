@@ -19,15 +19,14 @@ import {
   Layers,
   Calendar,
   Share2,
-  Clock,
   ArrowRight,
-  Filter
+  Filter,
+  Users
 } from 'lucide-react';
 import { 
   ChatRoutingConfigItem, 
   INITIAL_CHAT_ROUTING_CONFIGS, 
   CHAT_FALLBACK_OPTIONS,
-  CHAT_SOURCES,
   CHAT_OUTPUT_OPTIONS
 } from '@/lib/chat-routing-data';
 import { ChatRoutingModal } from './ChatRoutingModal';
@@ -39,19 +38,22 @@ interface ChatRoutingConfigViewProps {
   onSwitchToChatInputRouting?: () => void;
   onSwitchToSocialMedia?: () => void;
   onSwitchToAutoMessages?: () => void;
+  onSwitchToSpecialNumbers?: () => void;
+  onSwitchToCustomerSegments?: () => void;
 }
 
 export function ChatRoutingConfigView({ 
   onSwitchToCallRouting, 
   onSwitchToChatInputRouting,
   onSwitchToSocialMedia,
-  onSwitchToAutoMessages
+  onSwitchToAutoMessages,
+  onSwitchToSpecialNumbers,
+  onSwitchToCustomerSegments
 }: ChatRoutingConfigViewProps) {
   const [dataList, setDataList] = useState<ChatRoutingConfigItem[]>(INITIAL_CHAT_ROUTING_CONFIGS);
 
   // Filter states
   const [filterQueue, setFilterQueue] = useState<string>('Tất cả');
-  const [filterSource, setFilterSource] = useState<string>('Tất cả');
   const [filterOutput, setFilterOutput] = useState<string>('Tất cả');
   const [filterVIP, setFilterVIP] = useState<string>('Tất cả');
   const [filterStandard, setFilterStandard] = useState<string>('Tất cả');
@@ -59,7 +61,7 @@ export function ChatRoutingConfigView({
   const [filterDate, setFilterDate] = useState<string>('');
 
   // Sorting
-  type SortField = 'queueName' | 'queueCode' | 'inputOutput' | 'routingVIP' | 'routingStandard' | 'fallbackAction' | 'createdAt';
+  type SortField = 'queueName' | 'inputOutput' | 'routingVIP' | 'routingStandard' | 'fallbackAction' | 'createdAt';
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -100,7 +102,6 @@ export function ChatRoutingConfigView({
   // Reset Filters
   const handleResetFilters = () => {
     setFilterQueue('Tất cả');
-    setFilterSource('Tất cả');
     setFilterOutput('Tất cả');
     setFilterVIP('Tất cả');
     setFilterStandard('Tất cả');
@@ -112,7 +113,7 @@ export function ChatRoutingConfigView({
 
   // Distinct queue list for filter
   const uniqueQueueNames = useMemo(() => {
-    return Array.from(new Set(dataList.map(item => item.queueName || item.name || item.queueCode)));
+    return Array.from(new Set(dataList.map(item => item.queueName || item.name || '')));
   }, [dataList]);
 
   // Distinct input outcome list for filter
@@ -129,10 +130,6 @@ export function ChatRoutingConfigView({
     return dataList.filter(item => {
       const qName = item.queueName || item.name || '';
       if (filterQueue !== 'Tất cả' && qName !== filterQueue) return false;
-      if (filterSource !== 'Tất cả') {
-        const itemSources = item.chatSources || item.intakeChannels || [];
-        if (!itemSources.includes(filterSource)) return false;
-      }
       if (filterOutput !== 'Tất cả') {
         const itemOutput = item.inputOutput || '';
         if (!itemOutput.includes(filterOutput)) return false;
@@ -166,7 +163,7 @@ export function ChatRoutingConfigView({
       if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [dataList, filterQueue, filterSource, filterOutput, filterVIP, filterStandard, filterFallback, filterDate, sortField, sortDirection]);
+  }, [dataList, filterQueue, filterOutput, filterVIP, filterStandard, filterFallback, filterDate, sortField, sortDirection]);
 
   // Paginated Data
   const totalItems = filteredData.length;
@@ -179,7 +176,7 @@ export function ChatRoutingConfigView({
   const handleSaveItem = (savedItem: ChatRoutingConfigItem) => {
     if (selectedItem) {
       setDataList(prev => prev.map(item => item.id === savedItem.id ? savedItem : item));
-      showToast(`Đã cập nhật hàng đợi ${savedItem.queueName} (${savedItem.queueCode})`);
+      showToast(`Đã cập nhật hàng đợi ${savedItem.queueName}`);
     } else {
       setDataList(prev => [savedItem, ...prev]);
       showToast(`Đã tạo hàng đợi Chat mới: ${savedItem.queueName}`);
@@ -192,7 +189,7 @@ export function ChatRoutingConfigView({
   const handleConfirmDelete = () => {
     if (!deleteItem) return;
     setDataList(prev => prev.filter(item => item.id !== deleteItem.id));
-    showToast(`Đã xóa cấu hình Hàng đợi ${deleteItem.queueCode}`);
+    showToast(`Đã xóa cấu hình Hàng đợi ${deleteItem.queueName || deleteItem.name}`);
     setIsDeleteOpen(false);
     setDeleteItem(null);
   };
@@ -235,7 +232,18 @@ export function ChatRoutingConfigView({
             </p>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            {(onSwitchToSpecialNumbers || onSwitchToCustomerSegments) && (
+              <button
+                type="button"
+                onClick={onSwitchToSpecialNumbers || onSwitchToCustomerSegments}
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold rounded-md transition-colors cursor-pointer border border-amber-300 shadow-2xs"
+                title="Quản lý tập số đặc biệt (Danh sách tập VIP cho Chat Routing)"
+              >
+                <Users className="w-3.5 h-3.5 text-amber-600" />
+                <span>Quản lý tập số đặc biệt</span>
+              </button>
+            )}
             {onSwitchToChatInputRouting && (
               <button
                 type="button"
@@ -265,7 +273,7 @@ export function ChatRoutingConfigView({
         <div className="space-y-4">
           
           {/* Row 1: Filter Dropdowns */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             
             {/* Lọc Hàng đợi Chat */}
             <div>
@@ -284,29 +292,6 @@ export function ChatRoutingConfigView({
                   <option value="Tất cả">Tất cả hàng đợi</option>
                   {uniqueQueueNames.map((qn) => (
                     <option key={qn} value={qn}>{qn}</option>
-                  ))}
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Lọc theo Nguồn tiếp nhận chat */}
-            <div>
-              <label className="block text-xs font-normal text-slate-700 mb-1.5">
-                Nguồn tiếp nhận chat
-              </label>
-              <div className="relative">
-                <select
-                  value={filterSource}
-                  onChange={(e) => {
-                    setFilterSource(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full appearance-none bg-white text-xs text-slate-700 border border-slate-300 rounded px-3 py-2 pr-8 focus:outline-none focus:border-[#f25621] cursor-pointer shadow-2xs truncate"
-                >
-                  <option value="Tất cả">Tất cả nguồn chat</option>
-                  {CHAT_SOURCES.map((source) => (
-                    <option key={source} value={source}>{source}</option>
                   ))}
                 </select>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -383,7 +368,7 @@ export function ChatRoutingConfigView({
           </div>
 
           {/* Row 2: Fallback + Ngày tạo + Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
             
             {/* Hành động Fallback */}
             <div>
@@ -430,7 +415,7 @@ export function ChatRoutingConfigView({
             </div>
 
             {/* Action Buttons: Tìm kiếm & Làm mới */}
-            <div className="sm:col-span-1 lg:col-span-3 flex items-center gap-2 pt-1">
+            <div className="sm:col-span-2 lg:col-span-2 flex items-center gap-2 pt-1">
               <button
                 id="btn-search-chat-routing"
                 onClick={() => setCurrentPage(1)}
@@ -556,16 +541,10 @@ export function ChatRoutingConfigView({
                       </div>
                     </td>
 
-                    {/* Hàng đợi Chat & Lịch làm việc */}
+                    {/* Hàng đợi Chat */}
                     <td className="py-2.5 px-3">
                       <div className="font-semibold text-slate-900 text-xs">
                         {item.queueName || item.name}
-                      </div>
-                      <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5" title={item.workingSchedule || 'Giờ hành chính tiêu chuẩn'}>
-                        <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className="truncate max-w-[240px]">
-                          {item.workingSchedule || 'Giờ hành chính tiêu chuẩn'}
-                        </span>
                       </div>
                     </td>
 
@@ -698,6 +677,7 @@ export function ChatRoutingConfigView({
         onSave={handleSaveItem}
         initialData={selectedItem}
         onNavigateToInputConfig={onSwitchToChatInputRouting}
+        onNavigateToCustomerSegments={onSwitchToSpecialNumbers || onSwitchToCustomerSegments}
       />
 
       {/* Chat Routing Detail Modal */}
@@ -722,7 +702,7 @@ export function ChatRoutingConfigView({
           setDeleteItem(null);
         }}
         onConfirm={handleConfirmDelete}
-        itemLabel={deleteItem ? `${deleteItem.queueName || deleteItem.name} (${deleteItem.queueCode})` : ''}
+        itemLabel={deleteItem ? (deleteItem.queueName || deleteItem.name || '') : ''}
       />
 
     </div>

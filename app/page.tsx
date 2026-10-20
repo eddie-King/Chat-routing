@@ -67,6 +67,7 @@ export default function Home() {
               onSwitchToChatInputRouting={() => setCurrentView('chat-routing-input')}
               onSwitchToSocialMedia={() => setCurrentView('social-media-channels')}
               onSwitchToAutoMessages={() => setCurrentView('auto-messages-config')}
+              onSwitchToSpecialNumbers={() => setCurrentView('special-numbers')}
             />
           )}
           {currentView === 'chat-routing-input' && (

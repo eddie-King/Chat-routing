@@ -359,6 +359,8 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
                     <span className="truncate font-semibold">Tin nhắn tự động (SLA)</span>
                   </button>
 
+
+
                   {/* Danh bạ */}
                   <button
                     className="w-full flex items-center gap-2 px-2 py-1 rounded text-left text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
@@ -586,6 +588,13 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
                       className={`p-1.5 rounded ${currentView === 'working-hours-config' ? 'bg-orange-100 text-[#f25621]' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       <Calendar className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onSelectView('special-numbers')}
+                      title="Quản lý tập số đặc biệt"
+                      className={`p-1.5 rounded ${currentView === 'special-numbers' ? 'bg-orange-100 text-[#f25621]' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      <FileText className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )}

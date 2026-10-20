@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, MessageSquare, ChevronDown } from 'lucide-react';
 import { 
   ChatRoutingConfigItem, 
@@ -17,6 +17,7 @@ import {
   CHAT_AGENT_SCOPE_OPTIONS
 } from '@/lib/chat-routing-data';
 import { getAvailableWorkingSchedules } from '@/lib/working-hours-data';
+import { getVipCustomerGroups, subscribeCustomerSegments } from '@/lib/customer-segment-data';
 
 interface ChatRoutingModalProps {
   isOpen: boolean;
@@ -24,6 +25,7 @@ interface ChatRoutingModalProps {
   onSave: (item: ChatRoutingConfigItem) => void;
   initialData: ChatRoutingConfigItem | null;
   onNavigateToInputConfig?: () => void;
+  onNavigateToCustomerSegments?: () => void;
 }
 
 interface FormInnerProps {
@@ -31,6 +33,7 @@ interface FormInnerProps {
   onClose: () => void;
   onSave: (item: ChatRoutingConfigItem) => void;
   onNavigateToInputConfig?: () => void;
+  onNavigateToCustomerSegments?: () => void;
 }
 
 function ToggleSwitch({ checked, onChange, id }: { checked: boolean; onChange: (v: boolean) => void; id?: string }) {
@@ -54,13 +57,10 @@ function ToggleSwitch({ checked, onChange, id }: { checked: boolean; onChange: (
   );
 }
 
-function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputConfig }: FormInnerProps) {
-  // Top Fields: Queue Name & Queue Code
+function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputConfig, onNavigateToCustomerSegments }: FormInnerProps) {
+  // Top Field: Queue Name
   const [queueName, setQueueName] = useState(
     initialData?.queueName || initialData?.name || ''
-  );
-  const [queueCode, setQueueCode] = useState(
-    initialData?.queueCode || ''
   );
 
   // Lấy danh sách các Output điều kiện từ Cấu hình Input (đồng bộ với localStorage nếu có)
@@ -138,7 +138,18 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
 
   // VIP Routing Section
   const [isVipRouting, setIsVipRouting] = useState(initialData ? initialData.routingVIP === 'Có' : true);
-  const [vipCustomerGroup, setVipCustomerGroup] = useState(initialData?.vipCustomerGroup || CHAT_VIP_GROUPS[0]);
+  const [vipGroupOptions, setVipGroupOptions] = useState<string[]>(() => getVipCustomerGroups());
+  const [vipCustomerGroup, setVipCustomerGroup] = useState(
+    initialData?.vipCustomerGroup || vipGroupOptions[0] || 'Tất cả khách hàng VIP'
+  );
+
+  useEffect(() => {
+    const unsubscribe = subscribeCustomerSegments(() => {
+      setVipGroupOptions(getVipCustomerGroups());
+    });
+    return () => unsubscribe();
+  }, []);
+
   const [vipRoutingMethod, setVipRoutingMethod] = useState(initialData?.vipRoutingMethod || CHAT_ROUTING_METHODS[0]);
   const [vipSkillName, setVipSkillName] = useState(initialData?.vipSkillName || CHAT_SKILL_NAMES[0]);
   const [vipRecentAgent, setVipRecentAgent] = useState(initialData?.vipRecentAgent ?? true);
@@ -211,7 +222,7 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!queueName.trim() || !queueCode.trim()) return;
+    if (!queueName.trim()) return;
 
     const now = new Date();
     const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
@@ -239,7 +250,7 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
     const savedItem: ChatRoutingConfigItem = {
       id: initialData ? initialData.id : `chat-cfg-${Date.now()}`,
       queueName: queueName.trim(),
-      queueCode: queueCode.trim(),
+      queueCode: initialData?.queueCode || ('QUEUE_' + queueName.trim().toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 30)),
       name: queueName.trim(),
 
       // Lịch làm việc chung
@@ -328,35 +339,19 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
-          {/* Row 1: Tên hàng đợi (Queue Name) * & Mã hàng đợi (Queue Code) * */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Tên hàng đợi Chat (Queue Name) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={queueName}
-                onChange={(e) => setQueueName(e.target.value)}
-                placeholder="VD: Hàng đợi Hỗ trợ Kỹ thuật & Báo sự cố"
-                className="w-full h-9.5 px-3 text-xs text-slate-800 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Mã hàng đợi Chat (Queue Code) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={queueCode}
-                onChange={(e) => setQueueCode(e.target.value.toUpperCase().replace(/\s+/g, '_'))}
-                placeholder="VD: QUEUE_TECH_SUPPORT"
-                className="w-full h-9.5 px-3 text-xs font-mono font-semibold text-[#f25621] bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors"
-                required
-              />
-            </div>
+          {/* Tên hàng đợi (Queue Name) * */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              Tên hàng đợi Chat (Queue Name) <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={queueName}
+              onChange={(e) => setQueueName(e.target.value)}
+              placeholder="VD: Hàng đợi Hỗ trợ Kỹ thuật & Báo sự cố"
+              className="w-full h-9.5 px-3 text-xs text-slate-800 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors"
+              required
+            />
           </div>
 
           {/* Row 2: Trường Input & Lịch làm việc (để chung) */}
@@ -444,15 +439,30 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
                 {/* 3 Columns: Tập khách hàng VIP *, Phương thức định tuyến *, Tên kỹ năng * */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tập khách hàng VIP <span className="text-red-500">*</span>
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-slate-700">
+                        Tập khách hàng VIP <span className="text-red-500">*</span>
+                      </label>
+                      {onNavigateToCustomerSegments && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onNavigateToCustomerSegments();
+                          }}
+                          className="text-[11px] text-[#f25621] hover:underline font-semibold cursor-pointer inline-flex items-center gap-0.5"
+                          title="Mở Quản lý tập số đặc biệt để chọn hoặc thêm tập VIP"
+                        >
+                          Quản lý tập ({vipGroupOptions.length}) »
+                        </button>
+                      )}
+                    </div>
                     <select
                       value={vipCustomerGroup}
                       onChange={(e) => setVipCustomerGroup(e.target.value)}
                       className="w-full h-9 px-3 text-xs text-slate-700 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none transition-colors cursor-pointer"
                     >
-                      {CHAT_VIP_GROUPS.map((g) => (
+                      {vipGroupOptions.map((g) => (
                         <option key={g} value={g}>{g}</option>
                       ))}
                     </select>
@@ -862,7 +872,14 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
   );
 }
 
-export function ChatRoutingModal({ isOpen, onClose, onSave, initialData, onNavigateToInputConfig }: ChatRoutingModalProps) {
+export function ChatRoutingModal({ 
+  isOpen, 
+  onClose, 
+  onSave, 
+  initialData, 
+  onNavigateToInputConfig,
+  onNavigateToCustomerSegments 
+}: ChatRoutingModalProps) {
   if (!isOpen) return null;
   return (
     <ChatRoutingModalForm 
@@ -871,6 +888,7 @@ export function ChatRoutingModal({ isOpen, onClose, onSave, initialData, onNavig
       onClose={onClose} 
       onSave={onSave} 
       onNavigateToInputConfig={onNavigateToInputConfig}
+      onNavigateToCustomerSegments={onNavigateToCustomerSegments}
     />
   );
 }
