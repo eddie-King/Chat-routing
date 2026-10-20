@@ -30,6 +30,7 @@ import {
 import { CustomerGroupMemberModal } from './CustomerGroupMemberModal';
 import { CustomerGroupModal } from './CustomerGroupModal';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import SpecialNumberImportModal from './SpecialNumberImportModal';
 
 export function SpecialNumberView() {
   // Master list of groups
@@ -91,6 +92,10 @@ export function SpecialNumberView() {
 
   const [deleteGroup, setDeleteGroup] = useState<CustomerGroupItem | null>(null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+  // Import Modal state
+  const [importGroup, setImportGroup] = useState<CustomerGroupItem | null>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
 
   // Columns visibility
   const [isColumnsDropdownOpen, setIsColumnsDropdownOpen] = useState(false);
@@ -240,6 +245,32 @@ export function SpecialNumberView() {
     showToast(`Đã xóa tập khách hàng ${deleteGroup.groupName}`);
     setIsDeleteOpen(false);
     setDeleteGroup(null);
+  };
+
+  // Import handler: Ghi nhận số / senderId hợp lệ vào tập
+  const handleSaveImportedMembers = (groupId: string, newMembers: ExternalMemberItem[]) => {
+    setGroups(prev => {
+      const updated = prev.map(g => {
+        if (g.id === groupId) {
+          const now = new Date();
+          const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+          const currentExternal = g.externalMembers || [];
+          return {
+            ...g,
+            externalMembers: [...currentExternal, ...newMembers],
+            updatedAt: formattedDate
+          };
+        }
+        return g;
+      });
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('unispace_customer_groups', JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    const target = groups.find(g => g.id === groupId);
+    showToast(`Đã import thành công ${newMembers.length} ${target?.channel === 'Call' ? 'số điện thoại' : 'senderId'} vào tập ${target?.groupName || ''}`);
   };
 
   // Export CSV of customers in group (cả trong hệ thống và ngoài hệ thống)
@@ -560,11 +591,14 @@ export function SpecialNumberView() {
                             <Cog className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* 3. Tải xuống (Download) */}
+                          {/* 3. Nút Import (thay thế nút export theo image_e3e42c9a.png: icon xanh lá) */}
                           <button
-                            onClick={() => handleDownloadGroup(item)}
-                            title="Tải danh sách khách hàng (.csv)"
-                            className="text-slate-600 hover:text-emerald-600 transition-colors cursor-pointer"
+                            onClick={() => {
+                              setImportGroup(item);
+                              setIsImportOpen(true);
+                            }}
+                            title={item.channel === 'Call' ? 'Import số chủ gọi cho tập' : 'Import senderId cho tập'}
+                            className="text-emerald-600 hover:text-emerald-700 transition-colors cursor-pointer"
                           >
                             <Download className="w-3.5 h-3.5" />
                           </button>
@@ -758,6 +792,17 @@ export function SpecialNumberView() {
         }}
         onConfirm={handleConfirmDelete}
         itemLabel={deleteGroup ? `${deleteGroup.groupName} (${deleteGroup.groupCode})` : ''}
+      />
+
+      {/* POPUP IMPORT FILE SỐ CHỦ GỌI / SENDERID */}
+      <SpecialNumberImportModal
+        isOpen={isImportOpen}
+        group={importGroup}
+        onClose={() => {
+          setIsImportOpen(false);
+          setImportGroup(null);
+        }}
+        onImport={handleSaveImportedMembers}
       />
 
     </div>
