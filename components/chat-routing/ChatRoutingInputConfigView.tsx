@@ -60,7 +60,6 @@ export function ChatRoutingInputConfigView({
 
   // Quản lý việc mở popover chọn Value của từng dòng
   const [openDropdownRowId, setOpenDropdownRowId] = useState<string | null>(null);
-  const [customValueText, setCustomValueText] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Toast feedback
@@ -76,7 +75,6 @@ export function ChatRoutingInputConfigView({
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setOpenDropdownRowId(null);
-        setCustomValueText('');
       }
     }
     if (openDropdownRowId) {
@@ -199,20 +197,6 @@ export function ChatRoutingInputConfigView({
     }));
   };
 
-  // Thêm custom value vào dòng đang mở
-  const handleAddCustomValue = (id: string) => {
-    const trimmed = customValueText.trim();
-    if (!trimmed) return;
-    setConditions(prev => prev.map(item => {
-      if (item.id !== id) return item;
-      if (item.values.includes(trimmed)) return item;
-      return {
-        ...item,
-        values: [...item.values, trimmed]
-      };
-    }));
-    setCustomValueText('');
-  };
 
   // Thay đổi Output của 1 dòng
   const handleOutputChange = (id: string, val: string) => {
@@ -374,23 +358,6 @@ export function ChatRoutingInputConfigView({
                     <label className="text-xs font-semibold text-slate-700">
                       Value <span className="text-red-500">*</span>
                     </label>
-                    <div className="flex items-center gap-2 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectAllValues(row.id, row.type)}
-                        className="text-slate-600 hover:text-slate-900 underline font-medium cursor-pointer"
-                      >
-                        Chọn tất cả
-                      </button>
-                      <span className="text-slate-300">|</span>
-                      <button
-                        type="button"
-                        onClick={() => handleClearAllValues(row.id)}
-                        className="text-slate-500 hover:text-slate-800 cursor-pointer"
-                      >
-                        Bỏ chọn
-                      </button>
-                    </div>
                   </div>
 
                   {/* Tag preview + selector */}
@@ -449,7 +416,40 @@ export function ChatRoutingInputConfigView({
                         </button>
                       </div>
 
-                      <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                      <div className="max-h-56 overflow-y-auto space-y-1 pr-1">
+                        {/* Checkbox "Chọn tất cả" nằm đầu tiên trong danh sách checkbox */}
+                        {(() => {
+                          const isAllSelected = availableOptions.length > 0 && availableOptions.every(opt => row.values.includes(opt));
+                          const isSomeSelected = row.values.length > 0 && !isAllSelected;
+
+                          return (
+                            <label
+                              className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition-colors text-xs border-b border-slate-100 mb-1 pb-1.5 ${
+                                isAllSelected
+                                  ? 'bg-orange-50/70 text-slate-900 font-semibold'
+                                  : 'hover:bg-slate-50 text-slate-800 font-medium'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isAllSelected}
+                                ref={(el) => {
+                                  if (el) el.indeterminate = isSomeSelected;
+                                }}
+                                onChange={() => {
+                                  if (isAllSelected) {
+                                    handleClearAllValues(row.id);
+                                  } else {
+                                    handleSelectAllValues(row.id, row.type);
+                                  }
+                                }}
+                                className="rounded text-[#f25621] focus:ring-[#f25621] h-3.5 w-3.5 cursor-pointer accent-[#f25621]"
+                              />
+                              <span className="truncate">Chọn tất cả</span>
+                            </label>
+                          );
+                        })()}
+
                         {availableOptions.map((opt) => {
                           const isChecked = row.values.includes(opt);
                           return (
@@ -471,31 +471,6 @@ export function ChatRoutingInputConfigView({
                             </label>
                           );
                         })}
-                      </div>
-
-                      {/* Custom value input */}
-                      <div className="pt-2 border-t border-slate-100 flex items-center gap-1.5">
-                        <input
-                          type="text"
-                          value={customValueText}
-                          onChange={(e) => setCustomValueText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddCustomValue(row.id);
-                            }
-                          }}
-                          placeholder={`+ Thêm ${row.type}...`}
-                          className="h-7 px-2 text-[11px] border border-slate-200 rounded flex-1 focus:border-[#f25621] outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleAddCustomValue(row.id)}
-                          disabled={!customValueText.trim()}
-                          className="h-7 px-2 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 disabled:opacity-40 rounded cursor-pointer"
-                        >
-                          Thêm
-                        </button>
                       </div>
                     </div>
                   )}
@@ -522,38 +497,6 @@ export function ChatRoutingInputConfigView({
           );
         })}
 
-        {/* NÚT THÊM DÒNG ĐIỀU KIỆN BÊN DƯỚI */}
-        <div className="pt-1">
-          <button
-            type="button"
-            onClick={handleAddConditionRow}
-            className="w-full py-2.5 border border-dashed border-slate-300 hover:border-[#f25621] hover:bg-orange-50/20 text-slate-600 hover:text-[#f25621] rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <Plus className="w-4 h-4 text-[#f25621]" />
-            <span>Thêm dòng điều kiện</span>
-          </button>
-        </div>
-
-        {/* Thanh nút Lưu cấu hình bên dưới */}
-        <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
-          <button
-            type="button"
-            onClick={handleAddConditionRow}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4 text-[#f25621] stroke-[2.5]" />
-            <span>Thêm dòng</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSaveAll}
-            className="inline-flex items-center gap-1.5 px-5 py-2 bg-[#f25621] hover:bg-[#d94412] text-white text-xs font-semibold rounded-lg transition-colors shadow-2xs cursor-pointer"
-          >
-            <Check className="w-4 h-4 stroke-[2.5]" />
-            <span>Lưu cấu hình</span>
-          </button>
-        </div>
 
       </div>
 
