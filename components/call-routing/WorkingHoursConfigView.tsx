@@ -9,7 +9,10 @@ import {
   Calendar, 
   CalendarDays,
   CalendarCheck,
-  CheckCircle2
+  CheckCircle2,
+  Save,
+  Pencil,
+  RotateCcw
 } from 'lucide-react';
 import { 
   WorkingScheduleItem, 
@@ -160,9 +163,28 @@ export function WorkingHoursConfigView({
   const [makeUpReason, setMakeUpReason] = useState<string>('');
   const [makeUpShift, setMakeUpShift] = useState<string>('08:00 AM – 05:30 PM');
 
-  // Title edit state
+  // Title inline edit state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
+
+  // Modal: Thêm mới lịch làm việc
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createSubtitle, setCreateSubtitle] = useState('');
+  const [createTimezone, setCreateTimezone] = useState('GMT+7');
+  const [createDescription, setCreateDescription] = useState('');
+  const [createPreset, setCreatePreset] = useState<'standard' | 'all-week' | '24-7'>('standard');
+
+  // Modal: Chỉnh sửa thông tin lịch làm việc
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTargetId, setEditTargetId] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editSubtitle, setEditSubtitle] = useState('');
+  const [editTimezone, setEditTimezone] = useState('GMT+7');
+  const [editDescription, setEditDescription] = useState('');
+
+  // Last saved time indicator
+  const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
 
   // Delete modal state
   const [deleteConfirmData, setDeleteConfirmData] = useState<{ 
@@ -211,34 +233,121 @@ export function WorkingHoursConfigView({
     persistSchedules(nextList);
   };
 
-  // Create new schedule (+ Tạo lịch)
-  const handleCreateNewSchedule = () => {
+  // Explicit Save Action for the entire active schedule
+  const handleSaveCurrentSchedule = () => {
+    if (!activeSchedule) return;
+    persistSchedules([...schedules]);
+    const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setLastSavedTime(nowTime);
+    showToast(`Đã lưu cấu hình lịch làm việc "${activeSchedule.name}" thành công!`);
+  };
+
+  // Open Create Modal
+  const handleOpenCreateModal = () => {
+    const defaultSuffix = schedules.length + 1;
+    setCreateName(`Lịch làm việc ca ${defaultSuffix}`);
+    setCreateSubtitle('Dùng bởi Chưa dùng');
+    setCreateTimezone('GMT+7');
+    setCreateDescription('Cấu hình ca làm việc, ngày nghỉ lễ và làm bù');
+    setCreatePreset('standard');
+    setIsCreateModalOpen(true);
+  };
+
+  // Save New Schedule from Modal
+  const handleSaveNewSchedule = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!createName.trim()) {
+      showToast('Vui lòng nhập tên lịch làm việc');
+      return;
+    }
+
     const timestamp = Date.now();
+    let initialDays: DayWorkingSchedule[] = EXACT_IMAGE_WEEK_DAYS.map(d => ({
+      ...d,
+      shifts: JSON.parse(JSON.stringify(d.shifts))
+    }));
+
+    if (createPreset === 'all-week') {
+      initialDays = EXACT_IMAGE_WEEK_DAYS.map(d => ({
+        ...d,
+        enabled: true,
+        shifts: [{ start: '08:00 AM', end: '12:00 PM' }, { start: '01:30 PM', end: '05:30 PM' }]
+      }));
+    } else if (createPreset === '24-7') {
+      initialDays = EXACT_IMAGE_WEEK_DAYS.map(d => ({
+        ...d,
+        enabled: true,
+        shifts: [{ start: '00:00 AM', end: '11:59 PM' }]
+      }));
+    }
+
     const newSchedule: WorkingScheduleItem = {
       id: `sch-new-${timestamp}`,
-      name: 'Lịch mới',
-      subtitle: 'Dùng bởi Chưa dùng',
-      detailHeaderSubtitle: 'Múi giờ GMT+7 · Chưa dùng',
+      name: createName.trim(),
+      subtitle: createSubtitle.trim() || 'Dùng bởi Chưa dùng',
+      detailHeaderSubtitle: `Múi giờ ${createTimezone} · ${createSubtitle.trim() || 'Chưa dùng'}`,
       code: `SCH_${timestamp.toString(36).toUpperCase()}`,
-      description: 'Lịch làm việc mới tạo',
-      timezone: 'GMT+7',
-      days: EXACT_IMAGE_WEEK_DAYS.map(d => ({
-        ...d,
-        shifts: JSON.parse(JSON.stringify(d.shifts))
-      })),
+      description: createDescription.trim() || 'Lịch làm việc mới tạo',
+      timezone: createTimezone,
+      days: initialDays,
       holidays: [
         { id: `h1-${timestamp}`, name: '01/01 · Tết Dương lịch' },
-        { id: `h2-${timestamp}`, name: '16/02 – 22/02 · Tết Nguyên đán' }
+        { id: `h2-${timestamp}`, name: '16/02 – 22/02 · Tết Nguyên đán' },
+        { id: `h3-${timestamp}`, name: '30/04 – 01/05 · Lễ 30/4 & 1/5' },
+        { id: `h4-${timestamp}`, name: '01/09 – 02/09 · Quốc khánh' }
       ],
       makeUpDays: [],
       status: 'Áp dụng',
       createdAt: 'Hôm nay',
       appliedCount: 0
     };
+
     const nextList = [...schedules, newSchedule];
     persistSchedules(nextList);
     setSelectedScheduleId(newSchedule.id);
-    showToast('Đã tạo mới lịch làm việc');
+    setIsCreateModalOpen(false);
+    const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setLastSavedTime(nowTime);
+    showToast(`Đã lưu lịch làm việc mới "${newSchedule.name}" thành công!`);
+  };
+
+  // Open Edit Modal for a Schedule
+  const handleOpenEditModal = (schedule: WorkingScheduleItem) => {
+    setEditTargetId(schedule.id);
+    setEditName(schedule.name);
+    setEditSubtitle(schedule.subtitle || '');
+    setEditTimezone(schedule.timezone || 'GMT+7');
+    setEditDescription(schedule.description || '');
+    setIsEditModalOpen(true);
+  };
+
+  // Save Edit Schedule from Modal
+  const handleSaveEditSchedule = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!editName.trim()) {
+      showToast('Vui lòng nhập tên lịch làm việc');
+      return;
+    }
+
+    const nextList = schedules.map(s => {
+      if (s.id === editTargetId) {
+        return {
+          ...s,
+          name: editName.trim(),
+          subtitle: editSubtitle.trim() || s.subtitle,
+          timezone: editTimezone,
+          description: editDescription.trim(),
+          detailHeaderSubtitle: `Múi giờ ${editTimezone} · ${editSubtitle.trim() || 'Chưa dùng'}`
+        };
+      }
+      return s;
+    });
+
+    persistSchedules(nextList);
+    setIsEditModalOpen(false);
+    const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setLastSavedTime(nowTime);
+    showToast('Đã lưu thông tin lịch làm việc thành công!');
   };
 
   // Toggle Day Working Status
@@ -525,7 +634,7 @@ export function WorkingHoursConfigView({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={handleCreateNewSchedule}
+            onClick={handleOpenCreateModal}
             className="inline-flex items-center justify-center px-4 py-2 bg-[#f25621] hover:bg-[#d94412] text-white text-sm font-medium rounded-lg transition-colors cursor-pointer shadow-xs shrink-0"
           >
             + Tạo lịch
@@ -554,20 +663,32 @@ export function WorkingHoursConfigView({
                   <div className="text-xs font-bold text-slate-900 truncate leading-snug">
                     {item.name}
                   </div>
-                  {/* Nút thùng rác giữ nguyên không cần hover mới hiện */}
-                  {schedules.length > 1 && (
+                  <div className="flex items-center gap-0.5 shrink-0">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRequestRemoveSchedule(item.id, item.name);
+                        handleOpenEditModal(item);
                       }}
-                      className="text-slate-400 hover:text-red-500 hover:bg-slate-100 p-1 rounded-sm transition-colors cursor-pointer shrink-0"
-                      title="Xóa lịch này"
+                      className="text-slate-400 hover:text-[#f25621] hover:bg-slate-100 p-1 rounded-sm transition-colors cursor-pointer"
+                      title="Chỉnh sửa thông tin lịch"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
-                  )}
+                    {schedules.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRequestRemoveSchedule(item.id, item.name);
+                        }}
+                        className="text-slate-400 hover:text-red-500 hover:bg-slate-100 p-1 rounded-sm transition-colors cursor-pointer"
+                        title="Xóa lịch này"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5 truncate">
                   {item.subtitle || 'Dùng bởi Chưa dùng'}
@@ -580,32 +701,44 @@ export function WorkingHoursConfigView({
         {/* CỘT PHẢI: Bảng chi tiết giờ làm việc, Ngày lễ & Ngày làm bù */}
         <div className="flex-1 w-full bg-white rounded-2xl border border-slate-200/90 p-6 sm:p-7 space-y-6 shadow-2xs">
           
-          {/* Header bên phải */}
-          <div>
-            {isEditingTitle ? (
-              <div className="flex items-center gap-2 max-w-sm">
-                <input
-                  autoFocus
-                  type="text"
-                  value={titleDraft}
-                  onChange={(e) => setTitleDraft(e.target.value)}
-                  onBlur={handleSaveTitle}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
-                  className="text-base font-bold text-slate-900 border-b border-[#f25621] outline-none px-1 py-0.5 w-full bg-transparent"
-                />
-              </div>
-            ) : (
-              <h2 
-                onClick={handleStartEditTitle}
-                title="Bấm để đổi tên lịch"
-                className="text-base font-bold text-slate-900 cursor-pointer hover:text-[#f25621] transition-colors inline-block"
-              >
-                {activeSchedule.name}
-              </h2>
-            )}
-            <p className="text-xs text-slate-500 mt-0.5">
-              {activeSchedule.detailHeaderSubtitle || activeSchedule.subtitle || 'Múi giờ GMT+7'}
-            </p>
+          {/* Header bên phải - Màn chỉnh sửa lịch làm việc */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+            <div>
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2 max-w-sm">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={titleDraft}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onBlur={handleSaveTitle}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveTitle()}
+                    className="text-base font-bold text-slate-900 border-b border-[#f25621] outline-none px-1 py-0.5 w-full bg-transparent"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <h2 
+                    onClick={handleStartEditTitle}
+                    title="Bấm để đổi tên lịch"
+                    className="text-base font-bold text-slate-900 cursor-pointer hover:text-[#f25621] transition-colors inline-block"
+                  >
+                    {activeSchedule.name}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditModal(activeSchedule)}
+                    className="p-1 text-slate-400 hover:text-[#f25621] hover:bg-orange-50 rounded transition-colors cursor-pointer"
+                    title="Chỉnh sửa thông tin lịch làm việc"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-slate-500 mt-0.5">
+                {activeSchedule.detailHeaderSubtitle || activeSchedule.subtitle || 'Múi giờ GMT+7'}
+              </p>
+            </div>
           </div>
 
           {/* BẢNG CA LÀM VIỆC THEO NGÀY */}
@@ -943,9 +1076,244 @@ export function WorkingHoursConfigView({
 
           </div>
 
+          {/* FOOTER NÚT LƯU CẤU HÌNH Ở MÀN CHỈNH SỬA */}
+          <div className="pt-6 border-t border-slate-200/90 flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  const saved = localStorage.getItem('unispace_working_schedules_image_v2');
+                  if (saved) setSchedules(JSON.parse(saved));
+                  showToast('Đã khôi phục dữ liệu ban đầu');
+                } catch {}
+              }}
+              className="px-4 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+            >
+              Hủy thay đổi
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveCurrentSchedule}
+              className="inline-flex items-center gap-2 px-5 py-2 bg-[#f25621] hover:bg-[#d94412] text-white text-xs sm:text-sm font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
+            >
+              <Save className="w-4 h-4" />
+              <span>Lưu</span>
+            </button>
+          </div>
+
         </div>
 
       </div>
+
+      {/* ================= MODAL: THÊM MỚI LỊCH LÀM VIỆC ================= */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-orange-100 text-[#f25621]">
+                  <CalendarDays className="w-4 h-4" />
+                </span>
+                <h3 className="text-sm font-bold text-slate-800">
+                  THÊM MỚI LỊCH LÀM VIỆC
+                </h3>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveNewSchedule} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Tên lịch làm việc <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="Ví dụ: Lịch ca tối CSKH, Lịch Hà Nội..."
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  className="w-full h-8.5 px-3 bg-white border border-slate-300 rounded-md focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Múi giờ</label>
+                  <select
+                    value={createTimezone}
+                    onChange={(e) => setCreateTimezone(e.target.value)}
+                    className="w-full h-8.5 px-2.5 bg-white border border-slate-300 rounded-md focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none cursor-pointer"
+                  >
+                    <option value="GMT+7">GMT+7 (Hà Nội, Băng Cốc, Jakarta)</option>
+                    <option value="GMT+8">GMT+8 (Singapore, Bắc Kinh)</option>
+                    <option value="GMT+9">GMT+9 (Tokyo, Seoul)</option>
+                    <option value="GMT+0">GMT+0 (UTC, London)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Mẫu ca ban đầu</label>
+                  <select
+                    value={createPreset}
+                    onChange={(e) => setCreatePreset(e.target.value as any)}
+                    className="w-full h-8.5 px-2.5 bg-white border border-slate-300 rounded-md focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none cursor-pointer"
+                  >
+                    <option value="standard">Hành chính (T2 - T6 + CN, Thứ 7 nghỉ)</option>
+                    <option value="all-week">Cả tuần (T2 - CN, 2 ca/ngày)</option>
+                    <option value="24-7">24/7 (00:00 - 23:59 mỗi ngày)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Phạm vi áp dụng / Ghi chú</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Dùng bởi 6 SLA · Tin nhắn ngoài giờ..."
+                  value={createSubtitle}
+                  onChange={(e) => setCreateSubtitle(e.target.value)}
+                  className="w-full h-8.5 px-3 bg-white border border-slate-300 rounded-md focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Mô tả chi tiết</label>
+                <textarea
+                  rows={2}
+                  placeholder="Mô tả mục đích áp dụng của lịch làm việc này..."
+                  value={createDescription}
+                  onChange={(e) => setCreateDescription(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-md focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none resize-none"
+                />
+              </div>
+
+              {/* Modal Footer with Nút Lưu */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold bg-[#f25621] hover:bg-[#d94412] text-white rounded-lg transition-colors shadow-2xs cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Lưu</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: CHỈNH SỬA LỊCH LÀM VIỆC ================= */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="p-1.5 rounded-lg bg-orange-100 text-[#f25621]">
+                  <Pencil className="w-4 h-4" />
+                </span>
+                <h3 className="text-sm font-bold text-slate-800">
+                  CHỈNH SỬA THÔNG TIN LỊCH LÀM VIỆC
+                </h3>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveEditSchedule} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Tên lịch làm việc <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="Tên lịch làm việc..."
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full h-8.5 px-3 bg-white border border-slate-300 rounded-md focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Múi giờ</label>
+                <select
+                  value={editTimezone}
+                  onChange={(e) => setEditTimezone(e.target.value)}
+                  className="w-full h-8.5 px-2.5 bg-white border border-slate-300 rounded-md focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none cursor-pointer"
+                >
+                  <option value="GMT+7">GMT+7 (Hà Nội, Băng Cốc, Jakarta)</option>
+                  <option value="GMT+8">GMT+8 (Singapore, Bắc Kinh)</option>
+                  <option value="GMT+9">GMT+9 (Tokyo, Seoul)</option>
+                  <option value="GMT+0">GMT+0 (UTC, London)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Phạm vi áp dụng / Ghi chú</label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Dùng bởi 6 SLA · Tin nhắn ngoài giờ..."
+                  value={editSubtitle}
+                  onChange={(e) => setEditSubtitle(e.target.value)}
+                  className="w-full h-8.5 px-3 bg-white border border-slate-300 rounded-md focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Mô tả chi tiết</label>
+                <textarea
+                  rows={2}
+                  placeholder="Mô tả mục đích áp dụng của lịch làm việc này..."
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full p-2.5 bg-white border border-slate-300 rounded-md focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none resize-none"
+                />
+              </div>
+
+              {/* Modal Footer with Nút Lưu */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-3.5 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold bg-[#f25621] hover:bg-[#d94412] text-white rounded-lg transition-colors shadow-2xs cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Lưu</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Pop up xác nhận xóa chuẩn theo hình ảnh */}
       <DeleteConfirmModal

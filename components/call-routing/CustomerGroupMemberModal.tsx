@@ -10,7 +10,8 @@ import {
   Trash2, 
   Users, 
   AlertCircle,
-  Plus
+  Plus,
+  ChevronDown
 } from 'lucide-react';
 import { 
   CustomerItem, 
@@ -97,6 +98,14 @@ function CustomerGroupMemberModalInner({
 
   const isCallChannel = group.channel === 'Call';
 
+  // Pagination state for Tab 1 (internal)
+  const [internalPageSize, setInternalPageSize] = useState<number>(10);
+  const [internalCurrentPage, setInternalCurrentPage] = useState<number>(1);
+
+  // Pagination state for Tab 2 (manual import)
+  const [manualPageSize, setManualPageSize] = useState<number>(10);
+  const [manualCurrentPage, setManualCurrentPage] = useState<number>(1);
+
   // Filtered customer list (4 thuộc tính chính: Mã KH, Số điện thoại, Hạng KH, Email - Không filter theo Hạng KH)
   const filteredCustomers = useMemo(() => {
     return allCustomers.filter(cust => {
@@ -116,6 +125,20 @@ function CustomerGroupMemberModalInner({
     });
   }, [allCustomers, searchTerm, filterTab, selectedIds]);
 
+  // Tab 1 pagination calculations
+  const totalInternalItems = filteredCustomers.length;
+  const totalInternalPages = Math.ceil(totalInternalItems / internalPageSize) || 1;
+  const internalStartIndex = totalInternalItems === 0 ? 0 : (internalCurrentPage - 1) * internalPageSize;
+  const internalEndIndex = Math.min(internalStartIndex + internalPageSize, totalInternalItems);
+  const paginatedInternalCustomers = filteredCustomers.slice(internalStartIndex, internalEndIndex);
+
+  // Tab 2 pagination calculations
+  const totalManualItems = externalMembers.length;
+  const totalManualPages = Math.ceil(totalManualItems / manualPageSize) || 1;
+  const manualStartIndex = totalManualItems === 0 ? 0 : (manualCurrentPage - 1) * manualPageSize;
+  const manualEndIndex = Math.min(manualStartIndex + manualPageSize, totalManualItems);
+  const paginatedExternalMembers = externalMembers.slice(manualStartIndex, manualEndIndex);
+
   const handleToggleCustomer = (customerCode: string) => {
     setSelectedIds(prev => {
       if (prev.includes(customerCode)) {
@@ -127,7 +150,7 @@ function CustomerGroupMemberModalInner({
   };
 
   const handleToggleAllVisible = () => {
-    const visibleCodes = filteredCustomers.map(c => c.customerCode);
+    const visibleCodes = paginatedInternalCustomers.map(c => c.customerCode);
     const allSelected = visibleCodes.length > 0 && visibleCodes.every(code => selectedIds.includes(code));
     if (allSelected) {
       const visibleSet = new Set(visibleCodes);
@@ -209,8 +232,8 @@ function CustomerGroupMemberModalInner({
     onClose();
   };
 
-  const isAllVisibleSelected = filteredCustomers.length > 0 && 
-    filteredCustomers.every(c => selectedIds.includes(c.customerCode));
+  const isAllVisibleSelected = paginatedInternalCustomers.length > 0 && 
+    paginatedInternalCustomers.every(c => selectedIds.includes(c.customerCode));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -382,8 +405,8 @@ function CustomerGroupMemberModalInner({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 bg-white">
-                  {filteredCustomers.length > 0 ? (
-                    filteredCustomers.map(cust => {
+                  {paginatedInternalCustomers.length > 0 ? (
+                    paginatedInternalCustomers.map(cust => {
                       const isChecked = selectedIds.includes(cust.customerCode);
                       return (
                         <tr
@@ -425,6 +448,91 @@ function CustomerGroupMemberModalInner({
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* PHẦN CHÂN BẢNG: PAGINATION TAB 1 */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 bg-white border-t border-slate-200 text-xs text-slate-600 select-none">
+              {/* Vế trái: Dropdown chọn số mục & text hiển thị dải dữ liệu */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-slate-700">Hiển thị</span>
+                <div className="relative inline-flex items-center">
+                  <select
+                    value={internalPageSize}
+                    onChange={(e) => {
+                      setInternalPageSize(Number(e.target.value));
+                      setInternalCurrentPage(1);
+                    }}
+                    className="appearance-none bg-white border border-slate-300 rounded px-2.5 py-1 pr-6 text-xs text-slate-700 outline-none hover:border-slate-400 focus:border-[#f25621] cursor-pointer shadow-2xs"
+                  >
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-1.5 pointer-events-none" />
+                </div>
+                <span className="text-slate-700">mục</span>
+
+                <span className="text-slate-500 ml-3 sm:ml-5">
+                  {totalInternalItems === 0
+                    ? 'Hiển thị từ 0 đến 0 trong 0 mục'
+                    : `Hiển thị từ ${internalStartIndex + 1} đến ${internalEndIndex} trong ${totalInternalItems} mục`}
+                </span>
+              </div>
+
+              {/* Vế phải: Nút điều hướng các trang */}
+              <div className="flex items-center gap-4 text-xs font-normal">
+                <button
+                  type="button"
+                  onClick={() => setInternalCurrentPage(1)}
+                  disabled={internalCurrentPage <= 1}
+                  className={`transition-colors ${
+                    internalCurrentPage <= 1
+                      ? 'text-slate-400 cursor-not-allowed'
+                      : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                  }`}
+                >
+                  Trang đầu
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setInternalCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={internalCurrentPage <= 1}
+                  className={`transition-colors ${
+                    internalCurrentPage <= 1
+                      ? 'text-slate-400 cursor-not-allowed'
+                      : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                  }`}
+                >
+                  Trang trước
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setInternalCurrentPage(prev => Math.min(totalInternalPages, prev + 1))}
+                  disabled={internalCurrentPage >= totalInternalPages}
+                  className={`transition-colors ${
+                    internalCurrentPage >= totalInternalPages
+                      ? 'text-slate-400 cursor-not-allowed'
+                      : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                  }`}
+                >
+                  Trang kế
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setInternalCurrentPage(totalInternalPages)}
+                  disabled={internalCurrentPage >= totalInternalPages}
+                  className={`transition-colors ${
+                    internalCurrentPage >= totalInternalPages
+                      ? 'text-slate-400 cursor-not-allowed'
+                      : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                  }`}
+                >
+                  Trang cuối
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -531,11 +639,11 @@ function CustomerGroupMemberModalInner({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 bg-white">
-                    {externalMembers.length > 0 ? (
-                      externalMembers.map((item, idx) => (
+                    {paginatedExternalMembers.length > 0 ? (
+                      paginatedExternalMembers.map((item, idx) => (
                         <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                           <td className="py-2 px-3 text-center text-slate-500">
-                            {idx + 1}
+                            {manualStartIndex + idx + 1}
                           </td>
                           {isCallChannel ? (
                             <td className="py-2 px-3 font-mono font-medium text-slate-800">
@@ -563,13 +671,98 @@ function CustomerGroupMemberModalInner({
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={isCallChannel ? 5 : 4} className="py-8 text-center text-slate-400">
+                        <td colSpan={isCallChannel ? 4 : 4} className="py-8 text-center text-slate-400">
                           Chưa có {isCallChannel ? 'số điện thoại' : 'senderId'} nào được import thủ công cho tập này.
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
+
+                {/* PHẦN CHÂN BẢNG: PAGINATION TAB 2 (IMPORT THỦ CÔNG) */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 bg-white border-t border-slate-200 text-xs text-slate-600 select-none">
+                  {/* Vế trái: Dropdown chọn số mục & text hiển thị dải dữ liệu */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-slate-700">Hiển thị</span>
+                    <div className="relative inline-flex items-center">
+                      <select
+                        value={manualPageSize}
+                        onChange={(e) => {
+                          setManualPageSize(Number(e.target.value));
+                          setManualCurrentPage(1);
+                        }}
+                        className="appearance-none bg-white border border-slate-300 rounded px-2.5 py-1 pr-6 text-xs text-slate-700 outline-none hover:border-slate-400 focus:border-[#f25621] cursor-pointer shadow-2xs"
+                      >
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-1.5 pointer-events-none" />
+                    </div>
+                    <span className="text-slate-700">mục</span>
+
+                    <span className="text-slate-500 ml-3 sm:ml-5">
+                      {totalManualItems === 0
+                        ? 'Hiển thị từ 0 đến 0 trong 0 mục'
+                        : `Hiển thị từ ${manualStartIndex + 1} đến ${manualEndIndex} trong ${totalManualItems} mục`}
+                    </span>
+                  </div>
+
+                  {/* Vế phải: Nút điều hướng các trang */}
+                  <div className="flex items-center gap-4 text-xs font-normal">
+                    <button
+                      type="button"
+                      onClick={() => setManualCurrentPage(1)}
+                      disabled={manualCurrentPage <= 1}
+                      className={`transition-colors ${
+                        manualCurrentPage <= 1
+                          ? 'text-slate-400 cursor-not-allowed'
+                          : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                      }`}
+                    >
+                      Trang đầu
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setManualCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={manualCurrentPage <= 1}
+                      className={`transition-colors ${
+                        manualCurrentPage <= 1
+                          ? 'text-slate-400 cursor-not-allowed'
+                          : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                      }`}
+                    >
+                      Trang trước
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setManualCurrentPage(prev => Math.min(totalManualPages, prev + 1))}
+                      disabled={manualCurrentPage >= totalManualPages}
+                      className={`transition-colors ${
+                        manualCurrentPage >= totalManualPages
+                          ? 'text-slate-400 cursor-not-allowed'
+                          : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                      }`}
+                    >
+                      Trang kế
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setManualCurrentPage(totalManualPages)}
+                      disabled={manualCurrentPage >= totalManualPages}
+                      className={`transition-colors ${
+                        manualCurrentPage >= totalManualPages
+                          ? 'text-slate-400 cursor-not-allowed'
+                          : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                      }`}
+                    >
+                      Trang cuối
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 

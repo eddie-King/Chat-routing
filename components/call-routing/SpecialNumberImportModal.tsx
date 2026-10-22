@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { X, Upload, Download, FileSpreadsheet, ArrowUpDown } from 'lucide-react';
+import { X, Upload, Download, FileSpreadsheet, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { CustomerGroupItem, ExternalMemberItem } from '@/lib/customer-group-data';
 
 interface SpecialNumberImportModalProps {
@@ -54,6 +54,10 @@ function SpecialNumberImportModalInner({
   const [hasProcessed, setHasProcessed] = useState<boolean>(false);
   const [sortField, setSortField] = useState<'id' | 'reason'>('id');
   const [sortAsc, setSortAsc] = useState<boolean>(true);
+
+  // Pagination states
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   // Tải file mẫu
   const handleDownloadTemplate = () => {
@@ -260,6 +264,13 @@ function SpecialNumberImportModalInner({
     }
   };
 
+  // Phân trang cho danh sách không hợp lệ
+  const totalInvalidItems = sortedInvalidList.length;
+  const totalInvalidPages = Math.ceil(totalInvalidItems / pageSize) || 1;
+  const invalidStartIndex = totalInvalidItems === 0 ? 0 : (currentPage - 1) * pageSize;
+  const invalidEndIndex = Math.min(invalidStartIndex + pageSize, totalInvalidItems);
+  const paginatedInvalidList = sortedInvalidList.slice(invalidStartIndex, invalidEndIndex);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-md shadow-2xl w-full max-w-4xl overflow-hidden border border-slate-200 flex flex-col max-h-[92vh]">
@@ -419,8 +430,8 @@ function SpecialNumberImportModalInner({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
-                  {sortedInvalidList.length > 0 ? (
-                    sortedInvalidList.map((item, idx) => (
+                  {paginatedInvalidList.length > 0 ? (
+                    paginatedInvalidList.map((item, idx) => (
                       <tr key={idx} className="hover:bg-slate-50">
                         <td className="py-2 px-4 text-slate-800 font-mono">
                           {item.identifier}
@@ -439,6 +450,91 @@ function SpecialNumberImportModalInner({
                   )}
                 </tbody>
               </table>
+
+              {/* PHẦN CHÂN TRANG / PAGINATION KHỚP THEO THIẾT KẾ ẢNH USER */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 bg-white border-t border-slate-200 text-xs text-slate-600 select-none">
+                {/* Vế trái: Dropdown chọn số mục & text hiển thị dải dữ liệu */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-slate-700">Hiển thị</span>
+                  <div className="relative inline-flex items-center">
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="appearance-none bg-white border border-slate-300 rounded px-2.5 py-1 pr-6 text-xs text-slate-700 outline-none hover:border-slate-400 focus:border-[#f25621] cursor-pointer shadow-2xs"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-1.5 pointer-events-none" />
+                  </div>
+                  <span className="text-slate-700">mục</span>
+
+                  <span className="text-slate-500 ml-3 sm:ml-5">
+                    {totalInvalidItems === 0
+                      ? 'Hiển thị từ 0 đến 0 trong 0 mục'
+                      : `Hiển thị từ ${invalidStartIndex + 1} đến ${invalidEndIndex} trong ${totalInvalidItems} mục`}
+                  </span>
+                </div>
+
+                {/* Vế phải: Nút điều hướng các trang */}
+                <div className="flex items-center gap-4 text-xs font-normal">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage <= 1}
+                    className={`transition-colors ${
+                      currentPage <= 1
+                        ? 'text-slate-400 cursor-not-allowed'
+                        : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                    }`}
+                  >
+                    Trang đầu
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage <= 1}
+                    className={`transition-colors ${
+                      currentPage <= 1
+                        ? 'text-slate-400 cursor-not-allowed'
+                        : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                    }`}
+                  >
+                    Trang trước
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(prev => Math.min(totalInvalidPages, prev + 1))}
+                    disabled={currentPage >= totalInvalidPages}
+                    className={`transition-colors ${
+                      currentPage >= totalInvalidPages
+                        ? 'text-slate-400 cursor-not-allowed'
+                        : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                    }`}
+                  >
+                    Trang kế
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(totalInvalidPages)}
+                    disabled={currentPage >= totalInvalidPages}
+                    className={`transition-colors ${
+                      currentPage >= totalInvalidPages
+                        ? 'text-slate-400 cursor-not-allowed'
+                        : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                    }`}
+                  >
+                    Trang cuối
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
