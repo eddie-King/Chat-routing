@@ -19,9 +19,7 @@ import {
   Layers,
   Calendar,
   Share2,
-  ArrowRight,
-  Filter,
-  Users
+  ArrowRight
 } from 'lucide-react';
 import { 
   ChatRoutingConfigItem, 
@@ -233,28 +231,6 @@ export function ChatRoutingConfigView({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-            {(onSwitchToSpecialNumbers || onSwitchToCustomerSegments) && (
-              <button
-                type="button"
-                onClick={onSwitchToSpecialNumbers || onSwitchToCustomerSegments}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold rounded-md transition-colors cursor-pointer border border-amber-300 shadow-2xs"
-                title="Quản lý tập số đặc biệt (Danh sách tập VIP cho Chat Routing)"
-              >
-                <Users className="w-3.5 h-3.5 text-amber-600" />
-                <span>Quản lý tập số đặc biệt</span>
-              </button>
-            )}
-            {onSwitchToChatInputRouting && (
-              <button
-                type="button"
-                onClick={onSwitchToChatInputRouting}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium rounded-md transition-colors cursor-pointer border border-slate-200 shadow-2xs"
-                title="Cấu hình điều kiện Input (Type, Value, Output)"
-              >
-                <Filter className="w-3.5 h-3.5 text-[#f25621]" />
-                <span>Cấu hình Input Chat</span>
-              </button>
-            )}
             <button
               id="btn-create-new-chat-routing"
               onClick={() => {

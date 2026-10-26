@@ -1,7 +1,6 @@
 'use client';
 
-import React from 'react';
-import { X, MessageSquare, Edit, Layers, Building2, Bot, Filter } from 'lucide-react';
+import { X, MessageSquare, Bot } from 'lucide-react';
 import { ChatRoutingConfigItem } from '@/lib/chat-routing-data';
 
 interface ChatRoutingDetailModalProps {
@@ -363,19 +362,6 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
             >
               Đóng
             </button>
-            {onEdit && (
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onEdit(item);
-                }}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-[#f25621] hover:bg-[#e04a18] rounded transition-colors cursor-pointer shadow-xs"
-              >
-                <Edit className="w-3.5 h-3.5" />
-                <span>Chỉnh sửa cấu hình</span>
-              </button>
-            )}
           </div>
         </div>
       </div>

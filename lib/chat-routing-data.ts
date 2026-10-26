@@ -268,8 +268,11 @@ export const CHAT_SKILL_NAMES = [
 
 export const CHAT_AGENT_SCOPE_OPTIONS = [
   'Tất cả',
-  'Cùng nhóm kỹ năng Chat',
-  'Cùng ca trực hiện tại'
+  'Cùng hàng đợi',
+  'Cùng nhóm kỹ năng',
+  'Cùng kỹ năng',
+  'Cùng ca trực',
+  'Cùng phòng ban phụ trách'
 ];
 
 export const CHAT_AVAILABLE_AGENTS = [
