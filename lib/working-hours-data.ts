@@ -23,6 +23,7 @@ export interface MakeUpDaySchedule {
   id: string;
   name: string;
   date?: string;
+  swapForDate?: string;
   shift?: string;
   forHoliday?: string;
 }
@@ -36,13 +37,65 @@ export interface WorkingScheduleItem {
   description?: string;
   timezone?: string;
   days: DayWorkingSchedule[];
-  holidays: HolidaySchedule[];
+  holidays?: HolidaySchedule[];
   makeUpDays?: MakeUpDaySchedule[];
   afterHoursAction?: string;
   status?: 'Áp dụng' | 'Tạm dừng';
   createdAt?: string;
   updatedAt?: string;
   appliedCount?: number;
+}
+
+export const DEFAULT_GLOBAL_HOLIDAYS: HolidaySchedule[] = [
+  { id: 'gh-1', name: '01/01 · Tết Dương lịch', startDate: '2026-01-01', endDate: '2026-01-01' },
+  { id: 'gh-2', name: '16/02 – 22/02 · Tết Nguyên đán', startDate: '2026-02-16', endDate: '2026-02-22' },
+  { id: 'gh-3', name: '26/04 · Giỗ Tổ Hùng Vương', startDate: '2026-04-26', endDate: '2026-04-26' },
+  { id: 'gh-4', name: '30/04 – 01/05 · Lễ 30/4 & 1/5', startDate: '2026-04-30', endDate: '2026-05-01' },
+  { id: 'gh-5', name: '01/09 – 02/09 · Quốc khánh', startDate: '2026-09-01', endDate: '2026-09-02' }
+];
+
+export const DEFAULT_GLOBAL_MAKEUP_DAYS: MakeUpDaySchedule[] = [
+  {
+    id: 'gmu-1',
+    name: '21/02/2026 · Làm bù cho ngày 20/02/2026 (Thứ Sáu)',
+    date: '2026-02-21',
+    swapForDate: '2026-02-20',
+    shift: '08:00 AM – 12:00 PM, 01:30 PM – 05:30 PM',
+    forHoliday: 'Nghỉ Tết Nguyên đán'
+  }
+];
+
+export const GLOBAL_HOLIDAY_STORAGE_KEY = 'unispace_global_holidays_v3';
+export const GLOBAL_MAKEUP_STORAGE_KEY = 'unispace_global_makeups_v3';
+
+export function getInitialGlobalHolidays(): HolidaySchedule[] {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(GLOBAL_HOLIDAY_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return DEFAULT_GLOBAL_HOLIDAYS;
+}
+
+export function getInitialGlobalMakeUpDays(): MakeUpDaySchedule[] {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(GLOBAL_MAKEUP_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return DEFAULT_GLOBAL_MAKEUP_DAYS;
 }
 
 export const EXACT_IMAGE_WEEK_DAYS: DayWorkingSchedule[] = [

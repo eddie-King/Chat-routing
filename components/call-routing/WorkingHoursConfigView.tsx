@@ -19,6 +19,7 @@ import {
   DayWorkingSchedule, 
   ShiftSlot,
   MakeUpDaySchedule,
+  HolidaySchedule,
   INITIAL_WORKING_SCHEDULES,
   EXACT_IMAGE_WEEK_DAYS
 } from '@/lib/working-hours-data';
@@ -27,6 +28,20 @@ import { DeleteConfirmModal } from './DeleteConfirmModal';
 interface WorkingHoursConfigViewProps {
   onSwitchToCallRouting?: () => void;
   onSwitchToChatRouting?: () => void;
+}
+
+// Helper to extract default shifts (ca 1, ca 2) from active schedule's weekdays
+function getDefaultShiftsFromSchedule(schedule?: WorkingScheduleItem): ShiftSlot[] {
+  if (schedule) {
+    const enabledDay = schedule.days.find(d => d.enabled && d.shifts.length > 0);
+    if (enabledDay && enabledDay.shifts.length > 0) {
+      return enabledDay.shifts.map(s => ({ ...s }));
+    }
+  }
+  return [
+    { start: '08:00 AM', end: '12:00 PM' },
+    { start: '01:30 PM', end: '05:30 PM' }
+  ];
 }
 
 // Toggle Switch styled with brand theme #f25621
@@ -118,15 +133,6 @@ function TimeBox({
   );
 }
 
-// Quick Holiday Presets for Vietnamese Calendar
-const HOLIDAY_PRESETS = [
-  { name: 'Tết Dương lịch', date: '2026-01-01', display: '01/01 · Tết Dương lịch' },
-  { name: 'Tết Nguyên đán', date: '2026-02-16', endDate: '2026-02-22', display: '16/02 – 22/02 · Tết Nguyên đán' },
-  { name: 'Giỗ Tổ Hùng Vương', date: '2026-04-26', display: '26/04 · Giỗ Tổ Hùng Vương' },
-  { name: 'Lễ 30/4 & 1/5', date: '2026-04-30', endDate: '2026-05-01', display: '30/04 – 01/05 · Lễ 30/4 & 1/5' },
-  { name: 'Quốc khánh', date: '2026-09-01', endDate: '2026-09-02', display: '01/09 – 02/09 · Quốc khánh' },
-  { name: 'Giáng sinh', date: '2026-12-24', display: '24/12 · Giáng sinh' }
-];
 
 export function WorkingHoursConfigView({
   onSwitchToCallRouting: _onSwitchToCallRouting,
@@ -160,8 +166,10 @@ export function WorkingHoursConfigView({
 
   // Make-Up Work Day State
   const [makeUpDate, setMakeUpDate] = useState<string>('');
-  const [makeUpReason, setMakeUpReason] = useState<string>('');
-  const [makeUpShift, setMakeUpShift] = useState<string>('08:00 AM – 05:30 PM');
+  const [swapForDate, setSwapForDate] = useState<string>('');
+  const [makeUpShifts, setMakeUpShifts] = useState<ShiftSlot[]>(() => {
+    return getDefaultShiftsFromSchedule(schedules[0]);
+  });
 
   // Title inline edit state
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -217,6 +225,11 @@ export function WorkingHoursConfigView({
   };
 
   const activeSchedule = schedules.find(s => s.id === selectedScheduleId) || schedules[0];
+
+  const handleSelectSchedule = (target: WorkingScheduleItem) => {
+    setSelectedScheduleId(target.id);
+    setMakeUpShifts(getDefaultShiftsFromSchedule(target));
+  };
 
   const handleStartEditTitle = () => {
     if (activeSchedule) {
@@ -305,6 +318,7 @@ export function WorkingHoursConfigView({
     const nextList = [...schedules, newSchedule];
     persistSchedules(nextList);
     setSelectedScheduleId(newSchedule.id);
+    setMakeUpShifts(getDefaultShiftsFromSchedule(newSchedule));
     setIsCreateModalOpen(false);
     const nowTime = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setLastSavedTime(nowTime);
@@ -438,18 +452,6 @@ export function WorkingHoursConfigView({
     handleToggleDay(dayKey, false);
   };
 
-  // Quick Apply Holiday Preset
-  const handleApplyHolidayPreset = (preset: typeof HOLIDAY_PRESETS[0]) => {
-    setHolidayTitle(preset.name);
-    setHolidayDate(preset.date);
-    if (preset.endDate) {
-      setIsRangeHoliday(true);
-      setHolidayEndDate(preset.endDate);
-    } else {
-      setIsRangeHoliday(false);
-      setHolidayEndDate('');
-    }
-  };
 
   // Add Holiday with Date Selection
   const handleAddHolidayWithDate = () => {
@@ -481,7 +483,7 @@ export function WorkingHoursConfigView({
     updateActiveSchedule(prev => ({
       ...prev,
       holidays: [
-        ...prev.holidays,
+        ...(prev.holidays || []),
         { 
           id: `h-${Date.now()}`, 
           name: displayName,
@@ -512,22 +514,49 @@ export function WorkingHoursConfigView({
   // Add Make-Up Day with Date Selection
   const handleAddMakeUpDay = () => {
     if (!makeUpDate) {
-      showToast('Vui lòng chọn ngày làm bù');
+      showToast('Vui lòng chọn ngày đi làm bù');
+      return;
+    }
+    if (!swapForDate) {
+      showToast('Vui lòng chọn làm bù cho ngày');
+      return;
+    }
+    if (makeUpShifts.length === 0) {
+      showToast('Vui lòng cấu hình ít nhất 1 ca làm việc');
       return;
     }
 
     // Format date string from YYYY-MM-DD to DD/MM/YYYY
-    const parts = makeUpDate.split('-');
-    const formattedDate = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : makeUpDate;
-    const reasonText = makeUpReason.trim() ? ` · ${makeUpReason.trim()}` : ' · Làm bù ngày lễ';
-    const fullName = `${formattedDate}${reasonText}`;
+    const formatDay = (str: string) => {
+      const parts = str.split('-');
+      return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : str;
+    };
+
+    const makeUpDateFormatted = formatDay(makeUpDate);
+    const swapForDateFormatted = formatDay(swapForDate);
+
+    // Check if swapForDate matches a configured holiday
+    const matchedHoliday = (activeSchedule?.holidays || []).find(h => {
+      if (h.date === swapForDate || h.startDate === swapForDate) return true;
+      if (h.name.includes(swapForDateFormatted.slice(0, 5))) return true;
+      return false;
+    });
+
+    const holidaySuffix = matchedHoliday 
+      ? ` (${matchedHoliday.name.split('·').pop()?.trim() || matchedHoliday.name})` 
+      : '';
+
+    const fullName = `${makeUpDateFormatted} · Làm bù cho ngày ${swapForDateFormatted}${holidaySuffix}`;
+
+    const shiftText = makeUpShifts.map((s, i) => `Ca ${i + 1}: ${s.start} – ${s.end}`).join(', ');
 
     const newMakeUpItem: MakeUpDaySchedule = {
       id: `mu-${Date.now()}`,
       name: fullName,
       date: makeUpDate,
-      shift: makeUpShift,
-      forHoliday: makeUpReason.trim() || undefined
+      swapForDate: swapForDate,
+      shift: shiftText,
+      forHoliday: matchedHoliday?.name || `Làm bù cho ngày ${swapForDateFormatted}`
     };
 
     updateActiveSchedule(prev => {
@@ -539,7 +568,8 @@ export function WorkingHoursConfigView({
     });
 
     setMakeUpDate('');
-    setMakeUpReason('');
+    setSwapForDate('');
+    setMakeUpShifts(getDefaultShiftsFromSchedule(activeSchedule));
     showToast('Đã thêm ngày làm bù thành công');
   };
 
@@ -568,7 +598,7 @@ export function WorkingHoursConfigView({
     if (deleteConfirmData.type === 'holiday') {
       updateActiveSchedule(prev => ({
         ...prev,
-        holidays: prev.holidays.filter(h => h.id !== deleteConfirmData.id)
+        holidays: (prev.holidays || []).filter(h => h.id !== deleteConfirmData.id)
       }));
       showToast('Đã xóa ngày lễ');
     } else if (deleteConfirmData.type === 'makeup') {
@@ -604,6 +634,7 @@ export function WorkingHoursConfigView({
   if (!activeSchedule) return null;
 
   const currentMakeUpDays = (activeSchedule.makeUpDays || []) as MakeUpDaySchedule[];
+  const currentHolidays = (activeSchedule.holidays || []) as HolidaySchedule[];
 
   return (
     <div className="p-6 sm:p-8 max-w-[1320px] mx-auto min-h-screen font-sans text-slate-800 relative">
@@ -625,9 +656,6 @@ export function WorkingHoursConfigView({
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">
             Lịch làm việc
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Giờ làm việc, ngày lễ, ngày làm bù — dùng chung cho SLA, định tuyến và tin nhắn tự động.
-          </p>
         </div>
 
         {/* Nút + Tạo lịch đồng bộ màu theme hệ thống #f25621 */}
@@ -652,7 +680,7 @@ export function WorkingHoursConfigView({
             return (
               <div
                 key={item.id}
-                onClick={() => setSelectedScheduleId(item.id)}
+                onClick={() => handleSelectSchedule(item)}
                 className={`w-full p-3.5 rounded-xl bg-white cursor-pointer transition-all select-none relative ${
                   isSelected
                     ? 'border-[#f25621] ring-1 ring-[#f25621] shadow-xs'
@@ -735,9 +763,6 @@ export function WorkingHoursConfigView({
                   </button>
                 </div>
               )}
-              <p className="text-xs text-slate-500 mt-0.5">
-                {activeSchedule.detailHeaderSubtitle || activeSchedule.subtitle || 'Múi giờ GMT+7'}
-              </p>
             </div>
           </div>
 
@@ -747,7 +772,7 @@ export function WorkingHoursConfigView({
             <div className="flex items-center pb-2.5 border-b border-slate-100 text-[11px] font-bold text-slate-700 tracking-wider uppercase select-none">
               <div className="w-24 sm:w-28 shrink-0">NGÀY</div>
               <div className="w-20 shrink-0">LÀM VIỆC</div>
-              <div className="flex-1">CA LÀM VIỆC (TỐI ĐA 2 CA)</div>
+              <div className="flex-1">CA LÀM VIỆC</div>
             </div>
 
             {/* Table Rows (Thứ Hai đến Chủ nhật) */}
@@ -845,61 +870,14 @@ export function WorkingHoursConfigView({
             
             {/* Cột trái: Ngày lễ (Chọn ngày & Danh sách) */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-[#f25621]" />
-                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider select-none">
-                    Ngày nghỉ lễ
-                  </h3>
-                </div>
-                <span className="text-[11px] text-slate-400">
-                  {activeSchedule.holidays.length} ngày đã cấu hình
-                </span>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-[#f25621]" />
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider select-none">
+                  Ngày nghỉ lễ
+                </h3>
               </div>
 
-              {/* Danh sách ngày lễ */}
-              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
-                {activeSchedule.holidays.map((holiday) => (
-                  <div
-                    key={holiday.id}
-                    className="flex items-center justify-between px-3 py-2 bg-[#f8fafc] hover:bg-slate-100/80 rounded-lg text-xs text-slate-700 transition-colors"
-                  >
-                    <span className="font-medium text-slate-800">{holiday.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRequestRemoveHoliday(holiday.id, holiday.name)}
-                      className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors cursor-pointer"
-                      title="Xóa ngày lễ này"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-                {activeSchedule.holidays.length === 0 && (
-                  <p className="text-xs text-slate-400 italic py-2">Chưa có ngày nghỉ lễ nào.</p>
-                )}
-              </div>
-
-              {/* Gợi ý chọn nhanh các ngày lễ chuẩn */}
-              <div>
-                <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider block mb-1.5">
-                  Chọn nhanh dịp lễ:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {HOLIDAY_PRESETS.map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => handleApplyHolidayPreset(preset)}
-                      className="px-2 py-0.5 text-[11px] bg-slate-100 hover:bg-[#fff4f0] hover:text-[#f25621] hover:border-[#ffd5c7] border border-slate-200 rounded text-slate-600 transition-colors cursor-pointer"
-                    >
-                      {preset.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Form Chọn ngày nghỉ lễ */}
+              {/* Form Chọn ngày nghỉ lễ (Hiện phía trên) */}
               <div className="p-3 bg-slate-50/80 border border-slate-200/90 rounded-xl space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-700">
@@ -964,23 +942,155 @@ export function WorkingHoursConfigView({
                 </div>
               </div>
 
+              {/* Danh sách ngày lễ (Hiện ở phía dưới) */}
+              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                {currentHolidays.map((holiday) => (
+                  <div
+                    key={holiday.id}
+                    className="flex items-center justify-between px-3 py-2 bg-[#f8fafc] hover:bg-slate-100/80 rounded-lg text-xs text-slate-700 transition-colors"
+                  >
+                    <span className="font-medium text-slate-800">{holiday.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRequestRemoveHoliday(holiday.id, holiday.name)}
+                      className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded transition-colors cursor-pointer"
+                      title="Xóa ngày lễ này"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {currentHolidays.length === 0 && (
+                  <p className="text-xs text-slate-400 italic py-2">Chưa có ngày nghỉ lễ nào.</p>
+                )}
+              </div>
+
             </div>
 
             {/* Cột phải: Ngày làm bù (Chọn ngày & Danh sách) */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <CalendarDays className="w-4 h-4 text-[#f25621]" />
-                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider select-none">
-                    Ngày làm bù
-                  </h3>
-                </div>
-                <span className="text-[11px] text-slate-400">
-                  {currentMakeUpDays.length} ngày đã thiết lập
-                </span>
+              <div className="flex items-center gap-1.5">
+                <CalendarDays className="w-4 h-4 text-[#f25621]" />
+                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider select-none">
+                  Ngày làm bù
+                </h3>
               </div>
 
-              {/* Danh sách ngày làm bù */}
+              {/* Form Chọn ngày làm bù (Hiện phía trên) */}
+              <div className="p-3 bg-slate-50/80 border border-slate-200/90 rounded-xl space-y-3">
+                <span className="text-xs font-semibold text-slate-700 block">
+                  Chọn ngày làm bù mới:
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {/* Chọn ngày đi làm bù */}
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-0.5 font-medium">
+                      Ngày đi làm bù: <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={makeUpDate}
+                      onChange={(e) => setMakeUpDate(e.target.value)}
+                      className="w-full h-8 px-2.5 rounded-md border border-slate-300 text-xs text-slate-800 bg-white focus:outline-none focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621]"
+                    />
+                  </div>
+
+                  {/* Chọn làm bù cho ngày */}
+                  <div>
+                    <label className="block text-[10px] text-slate-500 mb-0.5 font-medium">
+                      Làm bù cho ngày: <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={swapForDate}
+                      onChange={(e) => setSwapForDate(e.target.value)}
+                      className="w-full h-8 px-2.5 rounded-md border border-slate-300 text-xs text-slate-800 bg-white focus:outline-none focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621]"
+                    />
+                  </div>
+                </div>
+
+                {/* Chọn khung giờ làm việc */}
+                <div>
+                  <div className="mb-1.5">
+                    <label className="block text-[10px] text-slate-500 font-medium">
+                      Khung giờ làm việc:
+                    </label>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {makeUpShifts.map((shift, idx) => (
+                      <div 
+                        key={idx} 
+                        className="inline-flex items-center gap-1.5 bg-white border border-slate-200/90 rounded-lg px-2 py-1 shadow-2xs"
+                      >
+                        <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">
+                          Ca {idx + 1}:
+                        </span>
+                        <TimeBox
+                          value={shift.start}
+                          onChange={(val) => {
+                            setMakeUpShifts(prev => prev.map((s, i) => i === idx ? { ...s, start: val } : s));
+                          }}
+                        />
+                        <span className="text-slate-400 text-xs">–</span>
+                        <TimeBox
+                          value={shift.end}
+                          onChange={(val) => {
+                            setMakeUpShifts(prev => prev.map((s, i) => i === idx ? { ...s, end: val } : s));
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMakeUpShifts(prev => prev.filter((_, i) => i !== idx));
+                          }}
+                          className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 p-1 rounded-md transition-colors cursor-pointer"
+                          title={`Xóa Ca ${idx + 1}`}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {makeUpShifts.length < 2 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newShift: ShiftSlot = makeUpShifts.length === 0
+                            ? { start: '08:00 AM', end: '12:00 PM' }
+                            : { start: '01:30 PM', end: '05:30 PM' };
+                          setMakeUpShifts(prev => [...prev, newShift]);
+                        }}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[#f25621] hover:text-[#d94412] bg-[#fff4f0] hover:bg-[#ffece6] border border-[#ffd5c7] rounded-md transition-colors cursor-pointer shadow-2xs shrink-0"
+                        title="Thêm ca làm việc (tối đa 2 ca)"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>+ Thêm ca</span>
+                      </button>
+                    )}
+
+                    {makeUpShifts.length === 0 && (
+                      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+                        Chưa có ca làm việc
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Nút Thêm ngày làm bù */}
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={handleAddMakeUpDay}
+                    className="px-4 h-8.5 rounded-md bg-[#f25621] hover:bg-[#d94412] text-xs font-medium text-white transition-colors cursor-pointer shrink-0 shadow-2xs"
+                  >
+                    + Thêm ngày làm bù
+                  </button>
+                </div>
+              </div>
+
+              {/* Danh sách ngày làm bù (Hiện ở phía dưới) */}
               <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
                 {currentMakeUpDays.map((makeup) => (
                   <div
@@ -1011,65 +1121,9 @@ export function WorkingHoursConfigView({
 
                 {currentMakeUpDays.length === 0 && (
                   <p className="text-xs text-slate-400 italic py-2">
-                    Chưa có ngày làm bù. Thiết lập bên dưới khi cần làm bù cho các dịp nghỉ lễ.
+                    Chưa có ngày làm bù nào.
                   </p>
                 )}
-              </div>
-
-              {/* Form Chọn ngày làm bù */}
-              <div className="p-3 bg-slate-50/80 border border-slate-200/90 rounded-xl space-y-2.5">
-                <span className="text-xs font-semibold text-slate-700 block">
-                  Chọn ngày làm bù mới:
-                </span>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-0.5">
-                      Ngày đi làm bù:
-                    </label>
-                    <input
-                      type="date"
-                      value={makeUpDate}
-                      onChange={(e) => setMakeUpDate(e.target.value)}
-                      className="w-full h-8 px-2.5 rounded-md border border-slate-300 text-xs text-slate-800 bg-white focus:outline-none focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] text-slate-500 mb-0.5">
-                      Khung giờ làm việc:
-                    </label>
-                    <select
-                      value={makeUpShift}
-                      onChange={(e) => setMakeUpShift(e.target.value)}
-                      className="w-full h-8 px-2 rounded-md border border-slate-300 text-xs text-slate-800 bg-white focus:outline-none focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621]"
-                    >
-                      <option value="08:00 AM – 05:30 PM">Cả ngày (08:00 AM – 05:30 PM)</option>
-                      <option value="08:00 AM – 12:00 PM">Ca sáng (08:00 AM – 12:00 PM)</option>
-                      <option value="01:30 PM – 05:30 PM">Ca chiều (01:30 PM – 05:30 PM)</option>
-                      <option value="08:00 AM – 05:00 PM">08:00 AM – 05:00 PM</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Lý do / Làm bù cho dịp lễ nào */}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={makeUpReason}
-                    onChange={(e) => setMakeUpReason(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddMakeUpDay()}
-                    placeholder="Lý do / Làm bù cho (VD: Làm bù nghỉ lễ 30/04 & 01/05)"
-                    className="flex-1 h-8.5 px-3 rounded-md border border-slate-300 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddMakeUpDay}
-                    className="px-4 h-8.5 rounded-md bg-[#f25621] hover:bg-[#d94412] text-xs font-medium text-white transition-colors cursor-pointer shrink-0 shadow-2xs"
-                  >
-                    + Thêm ngày làm bù
-                  </button>
-                </div>
               </div>
 
             </div>
