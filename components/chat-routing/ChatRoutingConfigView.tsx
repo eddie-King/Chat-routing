@@ -53,13 +53,11 @@ export function ChatRoutingConfigView({
   // Filter states
   const [filterQueue, setFilterQueue] = useState<string>('Tất cả');
   const [filterOutput, setFilterOutput] = useState<string>('Tất cả');
-  const [filterVIP, setFilterVIP] = useState<string>('Tất cả');
-  const [filterStandard, setFilterStandard] = useState<string>('Tất cả');
   const [filterFallback, setFilterFallback] = useState<string>('Tất cả');
   const [filterDate, setFilterDate] = useState<string>('');
 
   // Sorting
-  type SortField = 'queueName' | 'inputOutput' | 'routingVIP' | 'routingStandard' | 'fallbackAction' | 'createdAt';
+  type SortField = 'queueName' | 'inputOutput' | 'skillGroup' | 'queueSize' | 'fallbackAction' | 'createdAt';
   const [sortField, setSortField] = useState<SortField>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -101,8 +99,6 @@ export function ChatRoutingConfigView({
   const handleResetFilters = () => {
     setFilterQueue('Tất cả');
     setFilterOutput('Tất cả');
-    setFilterVIP('Tất cả');
-    setFilterStandard('Tất cả');
     setFilterFallback('Tất cả');
     setFilterDate('');
     setCurrentPage(1);
@@ -132,8 +128,6 @@ export function ChatRoutingConfigView({
         const itemOutput = item.inputOutput || '';
         if (!itemOutput.includes(filterOutput)) return false;
       }
-      if (filterVIP !== 'Tất cả' && item.routingVIP !== filterVIP) return false;
-      if (filterStandard !== 'Tất cả' && item.routingStandard !== filterStandard) return false;
       if (filterFallback !== 'Tất cả' && item.fallbackAction !== filterFallback) return false;
       if (filterDate.trim()) {
         const query = filterDate.trim().toLowerCase();
@@ -161,7 +155,7 @@ export function ChatRoutingConfigView({
       if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [dataList, filterQueue, filterOutput, filterVIP, filterStandard, filterFallback, filterDate, sortField, sortDirection]);
+  }, [dataList, filterQueue, filterOutput, filterFallback, filterDate, sortField, sortDirection]);
 
   // Paginated Data
   const totalItems = filteredData.length;
@@ -251,7 +245,7 @@ export function ChatRoutingConfigView({
           {/* Row 1: Filter Dropdowns */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             
-            {/* Lọc Hàng đợi Chat */}
+            {/* Lọc theo Hàng đợi */}
             <div>
               <label className="block text-xs font-normal text-slate-700 mb-1.5">
                 Hàng đợi Chat (Queue)
@@ -274,10 +268,10 @@ export function ChatRoutingConfigView({
               </div>
             </div>
 
-            {/* Lọc theo Input */}
+            {/* Lọc theo Luật định tuyến */}
             <div>
               <label className="block text-xs font-normal text-slate-700 mb-1.5">
-                Input
+                Luật định tuyến
               </label>
               <div className="relative">
                 <select
@@ -288,7 +282,7 @@ export function ChatRoutingConfigView({
                   }}
                   className="w-full appearance-none bg-white text-xs text-slate-700 border border-slate-300 rounded px-3 py-2 pr-8 focus:outline-none focus:border-[#f25621] cursor-pointer shadow-2xs truncate"
                 >
-                  <option value="Tất cả">Tất cả Input</option>
+                  <option value="Tất cả">Tất cả luật định tuyến</option>
                   {uniqueInputOptions.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
@@ -297,55 +291,6 @@ export function ChatRoutingConfigView({
               </div>
             </div>
 
-            {/* Routing VIP */}
-            <div>
-              <label className="block text-xs font-normal text-slate-700 mb-1.5">
-                Routing VIP
-              </label>
-              <div className="relative">
-                <select
-                  value={filterVIP}
-                  onChange={(e) => {
-                    setFilterVIP(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full appearance-none bg-white text-xs text-slate-700 border border-slate-300 rounded px-3 py-2 pr-8 focus:outline-none focus:border-[#f25621] cursor-pointer shadow-2xs"
-                >
-                  <option value="Tất cả">Tất cả</option>
-                  <option value="Có">Có</option>
-                  <option value="Không">Không</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Routing thường */}
-            <div>
-              <label className="block text-xs font-normal text-slate-700 mb-1.5">
-                Routing thường
-              </label>
-              <div className="relative">
-                <select
-                  value={filterStandard}
-                  onChange={(e) => {
-                    setFilterStandard(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full appearance-none bg-white text-xs text-slate-700 border border-slate-300 rounded px-3 py-2 pr-8 focus:outline-none focus:border-[#f25621] cursor-pointer shadow-2xs"
-                >
-                  <option value="Tất cả">Tất cả</option>
-                  <option value="Có">Có</option>
-                  <option value="Không">Không</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-          </div>
-
-          {/* Row 2: Fallback + Ngày tạo + Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-            
             {/* Hành động Fallback */}
             <div>
               <label className="block text-xs font-normal text-slate-700 mb-1.5">
@@ -390,27 +335,27 @@ export function ChatRoutingConfigView({
               </div>
             </div>
 
-            {/* Action Buttons: Tìm kiếm & Làm mới */}
-            <div className="sm:col-span-2 lg:col-span-2 flex items-center gap-2 pt-1">
-              <button
-                id="btn-search-chat-routing"
-                onClick={() => setCurrentPage(1)}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#f25621] hover:bg-[#e04815] text-white text-xs font-medium rounded transition-colors shadow-2xs cursor-pointer"
-              >
-                <Search className="w-3.5 h-3.5" />
-                <span>Tìm kiếm</span>
-              </button>
+          </div>
 
-              <button
-                id="btn-reset-filter-chat-routing"
-                onClick={handleResetFilters}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-medium rounded transition-colors shadow-2xs cursor-pointer"
-              >
-                <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
-                <span>Làm mới</span>
-              </button>
-            </div>
+          {/* Action Buttons: Tìm kiếm & Làm mới */}
+          <div className="flex items-center gap-2 pt-1 justify-end">
+            <button
+              id="btn-search-chat-routing"
+              onClick={() => setCurrentPage(1)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#f25621] hover:bg-[#e04815] text-white text-xs font-medium rounded transition-colors shadow-2xs cursor-pointer"
+            >
+              <Search className="w-3.5 h-3.5" />
+              <span>Tìm kiếm</span>
+            </button>
 
+            <button
+              id="btn-reset-filter-chat-routing"
+              onClick={handleResetFilters}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-medium rounded transition-colors shadow-2xs cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-slate-500" />
+              <span>Làm mới</span>
+            </button>
           </div>
 
         </div>
@@ -437,28 +382,28 @@ export function ChatRoutingConfigView({
                   onClick={() => handleSort('inputOutput')}
                 >
                   <div className="flex items-center">
-                    <span>Input</span>
+                    <span>Luật định tuyến</span>
                     {renderSortIcon('inputOutput')}
                   </div>
                 </th>
 
                 <th 
-                  className="py-2.5 px-3 text-center cursor-pointer hover:bg-slate-100 transition-colors group w-20"
-                  onClick={() => handleSort('routingVIP')}
+                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors group min-w-[180px]"
+                  onClick={() => handleSort('skillGroup')}
                 >
-                  <div className="flex items-center justify-center">
-                    <span>VIP</span>
-                    {renderSortIcon('routingVIP')}
+                  <div className="flex items-center">
+                    <span>Kỹ năng tiếp nhận</span>
+                    {renderSortIcon('skillGroup')}
                   </div>
                 </th>
 
                 <th 
-                  className="py-2.5 px-3 text-center cursor-pointer hover:bg-slate-100 transition-colors group w-20"
-                  onClick={() => handleSort('routingStandard')}
+                  className="py-2.5 px-3 text-center cursor-pointer hover:bg-slate-100 transition-colors group w-32"
+                  onClick={() => handleSort('queueSize')}
                 >
                   <div className="flex items-center justify-center">
-                    <span>Thường</span>
-                    {renderSortIcon('routingStandard')}
+                    <span>Kích thước hàng đợi</span>
+                    {renderSortIcon('queueSize')}
                   </div>
                 </th>
 
@@ -524,28 +469,24 @@ export function ChatRoutingConfigView({
                       </div>
                     </td>
 
-                    {/* Cột Input - hiển thị 1 giá trị outcome ví dụ: INPUT_FB_TECH_SUPPORT */}
+                    {/* Cột Luật định tuyến - hiển thị outcome ví dụ: INPUT_FB_TECH_SUPPORT */}
                     <td className="py-2.5 px-3 whitespace-nowrap">
                       <span className="font-mono text-xs font-semibold text-slate-800">
                         {item.inputOutput || 'INPUT_FB_TECH_SUPPORT'}
                       </span>
                     </td>
 
-                    {/* Routing VIP */}
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                        item.routingVIP === 'Có' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500'
-                      }`}>
-                        {item.routingVIP}
+                    {/* Kỹ năng tiếp nhận */}
+                    <td className="py-2.5 px-3 whitespace-nowrap text-slate-700">
+                      <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs font-medium border border-slate-200">
+                        {item.skillGroup || item.vipSkillName || item.stdSkillName || 'Mặc định'}
                       </span>
                     </td>
 
-                    {/* Routing thường */}
+                    {/* Kích thước hàng đợi */}
                     <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                        item.routingStandard === 'Có' ? 'bg-orange-50 text-[#f25621] border border-orange-200' : 'bg-slate-100 text-slate-500'
-                      }`}>
-                        {item.routingStandard}
+                      <span className="font-semibold text-slate-700 text-xs">
+                        {item.queueSize ?? item.stdQueueSize ?? item.vipQueueSize ?? 25} phiên
                       </span>
                     </td>
 

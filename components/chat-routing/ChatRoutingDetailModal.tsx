@@ -26,11 +26,8 @@ function ReadOnlyToggle({ checked }: { checked: boolean }) {
   );
 }
 
-export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRoutingDetailModalProps) {
+export function ChatRoutingDetailModal({ isOpen, onClose, item }: ChatRoutingDetailModalProps) {
   if (!isOpen || !item) return null;
-
-  const isVipOn = item.routingVIP === 'Có';
-  const isStdOn = item.routingStandard === 'Có';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 overflow-y-auto">
@@ -67,11 +64,11 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
             </div>
           </div>
 
-          {/* Trường Input & Lịch làm việc (để chung) */}
+          {/* Trường Luật định tuyến & Lịch làm việc (để chung) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Input
+                Luật định tuyến
               </label>
               <div className="w-full h-9.5 px-3 flex items-center text-xs font-mono text-slate-800 bg-slate-50 border border-slate-200 rounded">
                 {item.inputOutput || 'INPUT_FB_TECH_SUPPORT'}
@@ -98,253 +95,110 @@ export function ChatRoutingDetailModal({ isOpen, onClose, item, onEdit }: ChatRo
             </div>
           </div>
 
-          {/* Section: Routing VIP */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center gap-3">
-              <ReadOnlyToggle checked={isVipOn} />
-              <span className="text-xs font-semibold text-slate-800">
-                Routing VIP
-              </span>
-              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                isVipOn ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
-              }`}>
-                {isVipOn ? 'Đang kích hoạt' : 'Không sử dụng'}
-              </span>
+          {/* Section: Cấu hình phân phối & Hàng đợi tiếp nhận */}
+          <div className="space-y-4 pt-2 border-t border-slate-200">
+            <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+              Cấu hình phân phối & Hàng đợi tiếp nhận
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Phương thức định tuyến
+                </label>
+                <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
+                  {item.vipRoutingMethod || item.stdRoutingMethod || 'Kỹ năng'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  {(item.vipRoutingMethod || item.stdRoutingMethod) === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'}
+                </label>
+                <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
+                  {item.skillGroup || item.vipSkillName || item.stdSkillName || 'Chưa thiết lập'}
+                </div>
+              </div>
             </div>
 
-            {isVipOn && (
-              <div className="space-y-4 pl-1 border-l-2 border-[#f25621]/30 ml-4.5 py-1">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Tập khách hàng VIP
-                    </label>
-                    <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                      {item.vipCustomerGroup || 'Chưa thiết lập'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Phương thức định tuyến
-                    </label>
-                    <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                      {item.vipRoutingMethod || 'Chưa thiết lập'}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      {item.vipRoutingMethod === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'}
-                    </label>
-                    <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                      {item.vipSkillName || 'Chưa thiết lập'}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Sub-toggle: Agent gần nhất (Sticky Agent) */}
-                <div className="space-y-3 pt-1">
-                  <div className="flex items-center gap-3">
-                    <ReadOnlyToggle checked={Boolean(item.vipRecentAgent)} />
-                    <span className="text-xs font-medium text-slate-700">
-                      Agent gần nhất (Sticky Agent VIP)
-                    </span>
-                  </div>
-
-                  {item.vipRecentAgent && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Phạm vi
-                        </label>
-                        <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                          {item.vipRecentScope || 'Tất cả'}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Trong vòng
-                        </label>
-                        <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                          {item.vipRecentHours ?? 24} giờ gần nhất
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Cấu hình hàng đợi VIP riêng */}
-                <div className="pt-3 border-t border-orange-100 space-y-3">
-                  <h4 className="text-xs font-bold text-orange-950 flex items-center gap-1.5">
-                    <span>Cấu hình hàng đợi VIP</span>
-                    <span className="text-[10px] font-medium text-[#f25621] bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200">Luồng ưu tiên</span>
-                  </h4>
-
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-medium text-slate-700 w-56">
-                        Kích thước hàng đợi VIP:
-                      </span>
-                      <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {item.vipQueueSize ?? item.queueSize ?? 15} phiên chat
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-medium text-slate-700 w-56">
-                        Thời gian chờ Agent phản hồi:
-                      </span>
-                      <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {item.vipAgentTimeoutMin ?? item.agentTimeoutMin ?? 2} phút
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-medium text-slate-700 w-56">
-                        Thời gian chờ khách phản hồi:
-                      </span>
-                      <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {(item.vipCustomerTimeoutSec && item.vipCustomerTimeoutSec >= 30 ? Math.round(item.vipCustomerTimeoutSec / 60) : item.vipCustomerTimeoutSec) ?? 3} phút
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Hành động (Fallback) VIP */}
-                <div className="pt-3 border-t border-orange-100">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Hành động (Fallback) VIP
-                  </label>
-                  <div className="w-full h-9 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                    <Bot className="w-3.5 h-3.5 text-[#f25621] mr-2" />
-                    {item.vipFallbackAction || item.fallbackAction || 'AI Bot Assistant (UniBot AI)'}
-                  </div>
-                </div>
-
+            {/* Sub-toggle: Agent gần nhất (Sticky Agent) */}
+            <div className="space-y-3 pt-1">
+              <div className="flex items-center gap-3">
+                <ReadOnlyToggle checked={Boolean(item.vipRecentAgent || item.stdRecentAgent)} />
+                <span className="text-xs font-medium text-slate-700">
+                  Agent gần nhất (Sticky Agent)
+                </span>
               </div>
-            )}
-          </div>
 
-          {/* Section: Routing thường */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center gap-3">
-              <ReadOnlyToggle checked={isStdOn} />
-              <span className="text-xs font-semibold text-slate-800">
-                Routing thường
-              </span>
-              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                isStdOn ? 'bg-orange-100 text-[#f25621]' : 'bg-slate-100 text-slate-600'
-              }`}>
-                {isStdOn ? 'Đang kích hoạt' : 'Không sử dụng'}
-              </span>
+              {(item.vipRecentAgent || item.stdRecentAgent) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-4 border-l-2 border-[#f25621]/30 ml-2 py-1">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      Phạm vi
+                    </label>
+                    <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
+                      {item.vipRecentScope || item.stdRecentScope || 'Tất cả'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      Trong vòng
+                    </label>
+                    <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
+                      {item.vipRecentHours ?? item.stdRecentHours ?? 24} giờ gần nhất
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {isStdOn && (
-              <div className="space-y-4 pl-1 border-l-2 border-slate-200 ml-4.5 py-1">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      Phương thức định tuyến
-                    </label>
-                    <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                      {item.stdRoutingMethod || 'Chưa thiết lập'}
-                    </div>
-                  </div>
+            {/* Thông số hàng đợi */}
+            <div className="pt-3 border-t border-slate-100 space-y-3">
+              <h4 className="text-xs font-bold text-slate-800">
+                Thông số hàng đợi
+              </h4>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                      {item.stdRoutingMethod === 'Nhóm kỹ năng' ? 'Tên nhóm kỹ năng' : 'Tên kỹ năng'}
-                    </label>
-                    <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                      {item.stdSkillName || 'Chưa thiết lập'}
-                    </div>
-                  </div>
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-4">
+                  <span className="text-xs font-medium text-slate-700 w-56">
+                    Kích thước hàng đợi:
+                  </span>
+                  <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
+                    {item.queueSize ?? item.stdQueueSize ?? item.vipQueueSize ?? 25} phiên chat
+                  </span>
                 </div>
 
-                {/* Sub-toggle: Agent gần nhất */}
-                <div className="space-y-3 pt-1">
-                  <div className="flex items-center gap-3">
-                    <ReadOnlyToggle checked={Boolean(item.stdRecentAgent)} />
-                    <span className="text-xs font-medium text-slate-700">
-                      Agent gần nhất (Sticky Agent)
-                    </span>
-                  </div>
-
-                  {item.stdRecentAgent && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Phạm vi
-                        </label>
-                        <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                          {item.stdRecentScope || 'Tất cả'}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                          Trong vòng
-                        </label>
-                        <div className="w-full h-9 px-3 flex items-center text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                          {item.stdRecentHours ?? 24} giờ gần nhất
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                <div className="flex items-center gap-4">
+                  <span className="text-xs font-medium text-slate-700 w-56">
+                    Thời gian chờ Agent phản hồi:
+                  </span>
+                  <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
+                    {item.agentTimeoutMin ?? item.stdAgentTimeoutMin ?? item.vipAgentTimeoutMin ?? 2} phút
+                  </span>
                 </div>
 
-                {/* Cấu hình hàng đợi Thường riêng */}
-                <div className="pt-3 border-t border-slate-200 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <span>Cấu hình hàng đợi thường</span>
-                    <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Luồng chuẩn</span>
-                  </h4>
-
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-medium text-slate-700 w-56">
-                        Kích thước hàng đợi thường:
-                      </span>
-                      <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {item.stdQueueSize ?? item.queueSize ?? 30} phiên chat
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-medium text-slate-700 w-56">
-                        Thời gian chờ Agent phản hồi:
-                      </span>
-                      <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {item.stdAgentTimeoutMin ?? item.agentTimeoutMin ?? 3} phút
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-medium text-slate-700 w-56">
-                        Thời gian chờ khách phản hồi:
-                      </span>
-                      <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
-                        {(item.stdCustomerTimeoutSec && item.stdCustomerTimeoutSec >= 30 ? Math.round(item.stdCustomerTimeoutSec / 60) : item.stdCustomerTimeoutSec) ?? 5} phút
-                      </span>
-                    </div>
-                  </div>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs font-medium text-slate-700 w-56">
+                    Thời gian chờ khách phản hồi:
+                  </span>
+                  <span className="font-semibold text-slate-900 bg-slate-100 px-3 py-1 rounded">
+                    {(item.customerTimeoutSec && item.customerTimeoutSec >= 30 ? Math.round(item.customerTimeoutSec / 60) : item.customerTimeoutSec) ?? 3} phút
+                  </span>
                 </div>
-
-                {/* Hành động (Fallback) Thường */}
-                <div className="pt-3 border-t border-slate-200">
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    Hành động (Fallback) Thường
-                  </label>
-                  <div className="w-full h-9 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded">
-                    <Bot className="w-3.5 h-3.5 text-[#f25621] mr-2" />
-                    {item.stdFallbackAction || item.fallbackAction || 'Chuyển Ticket Offline (Form liên hệ)'}
-                  </div>
-                </div>
-
               </div>
-            )}
+            </div>
+
+            {/* Hành động (Fallback) */}
+            <div className="pt-3 border-t border-slate-100">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Hành động (Fallback)
+              </label>
+              <div className="w-full h-9 px-3 flex items-center text-xs font-medium text-slate-800 bg-slate-50 border border-slate-200 rounded">
+                <Bot className="w-3.5 h-3.5 text-[#f25621] mr-2" />
+                {item.fallbackAction || item.vipFallbackAction || item.stdFallbackAction || 'AI Bot Assistant (UniBot AI)'}
+              </div>
+            </div>
           </div>
 
           {/* Metadata Bar */}
