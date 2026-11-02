@@ -3,21 +3,17 @@
 import React, { useState, useMemo } from 'react';
 import { 
   X, 
-  Search, 
   PhoneCall, 
   MessageSquare, 
-  Upload, 
   Trash2, 
-  Users, 
   AlertCircle,
   Plus,
-  ChevronDown
+  ChevronDown,
+  Search
 } from 'lucide-react';
 import { 
-  CustomerItem, 
   CustomerGroupItem, 
-  ExternalMemberItem,
-  INITIAL_CUSTOMERS 
+  ExternalMemberItem 
 } from '@/lib/customer-group-data';
 
 interface CustomerGroupMemberModalProps {
@@ -25,152 +21,72 @@ interface CustomerGroupMemberModalProps {
   onClose: () => void;
   group: CustomerGroupItem | null;
   onSaveMembers: (groupId: string, customerIds: string[], externalMembers?: ExternalMemberItem[]) => void;
-  allCustomers?: CustomerItem[];
+  allCustomers?: any[];
 }
 
 interface InnerProps {
   onClose: () => void;
   group: CustomerGroupItem;
   onSaveMembers: (groupId: string, customerIds: string[], externalMembers?: ExternalMemberItem[]) => void;
-  allCustomers: CustomerItem[];
-}
-
-// Helper render tag màu cho từng phân hạng khách hàng
-function renderTierTag(tier?: string) {
-  switch (tier) {
-    case 'Kim cương':
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200">
-          Kim cương
-        </span>
-      );
-    case 'Vàng':
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-300">
-          Vàng
-        </span>
-      );
-    case 'Bạc':
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-300">
-          Bạc
-        </span>
-      );
-    case 'Đồng':
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-orange-50 text-orange-800 border border-orange-200">
-          Đồng
-        </span>
-      );
-    default:
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-50 text-slate-600 border border-slate-200">
-          {tier || 'Tiêu chuẩn'}
-        </span>
-      );
-  }
 }
 
 function CustomerGroupMemberModalInner({
   onClose,
   group,
-  onSaveMembers,
-  allCustomers
+  onSaveMembers
 }: InnerProps) {
-  // Navigation Tabs: Khách hàng trong hệ thống VS Import thủ công
-  const [modalTab, setModalTab] = useState<'internal' | 'external'>('internal');
-
-  // Internal customers selection state
-  const [selectedIds, setSelectedIds] = useState<string[]>(() => group.customerIds || []);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterTab, setFilterTab] = useState<'all' | 'selected' | 'unselected'>('all');
-
-  // External / Manual customers import state
+  // Danh sách các số điện thoại / senderId trong tập (từ file import và nhập thủ công)
   const [externalMembers, setExternalMembers] = useState<ExternalMemberItem[]>(
     () => group.externalMembers || []
   );
 
-  // Manual input fields for Tab 2
+  // Ô nhập thủ công
   const [manualPhone, setManualPhone] = useState('');
   const [manualSenderId, setManualSenderId] = useState('');
+
+  // Tìm kiếm nhanh trong danh sách
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [importFeedback, setImportFeedback] = useState<string | null>(null);
 
   const isCallChannel = group.channel === 'Call';
 
-  // Pagination state for Tab 1 (internal)
-  const [internalPageSize, setInternalPageSize] = useState<number>(10);
-  const [internalCurrentPage, setInternalCurrentPage] = useState<number>(1);
+  // Phân trang
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // Pagination state for Tab 2 (manual import)
-  const [manualPageSize, setManualPageSize] = useState<number>(10);
-  const [manualCurrentPage, setManualCurrentPage] = useState<number>(1);
-
-  // Filtered customer list (4 thuộc tính chính: Mã KH, Số điện thoại, Hạng KH, Email - Không filter theo Hạng KH)
-  const filteredCustomers = useMemo(() => {
-    return allCustomers.filter(cust => {
-      const query = searchTerm.toLowerCase().trim();
-      const matchSearch = !query || 
-        cust.customerCode.toLowerCase().includes(query) ||
-        cust.fullName.toLowerCase().includes(query) ||
-        cust.phone.includes(query) ||
-        cust.email.toLowerCase().includes(query) ||
-        (cust.tier && cust.tier.toLowerCase().includes(query));
-
-      const isSelected = selectedIds.includes(cust.customerCode);
-      if (filterTab === 'selected' && !isSelected) return false;
-      if (filterTab === 'unselected' && isSelected) return false;
-
-      return matchSearch;
-    });
-  }, [allCustomers, searchTerm, filterTab, selectedIds]);
-
-  // Tab 1 pagination calculations
-  const totalInternalItems = filteredCustomers.length;
-  const totalInternalPages = Math.ceil(totalInternalItems / internalPageSize) || 1;
-  const internalStartIndex = totalInternalItems === 0 ? 0 : (internalCurrentPage - 1) * internalPageSize;
-  const internalEndIndex = Math.min(internalStartIndex + internalPageSize, totalInternalItems);
-  const paginatedInternalCustomers = filteredCustomers.slice(internalStartIndex, internalEndIndex);
-
-  // Tab 2 pagination calculations
-  const totalManualItems = externalMembers.length;
-  const totalManualPages = Math.ceil(totalManualItems / manualPageSize) || 1;
-  const manualStartIndex = totalManualItems === 0 ? 0 : (manualCurrentPage - 1) * manualPageSize;
-  const manualEndIndex = Math.min(manualStartIndex + manualPageSize, totalManualItems);
-  const paginatedExternalMembers = externalMembers.slice(manualStartIndex, manualEndIndex);
-
-  const handleToggleCustomer = (customerCode: string) => {
-    setSelectedIds(prev => {
-      if (prev.includes(customerCode)) {
-        return prev.filter(c => c !== customerCode);
-      } else {
-        return [...prev, customerCode];
+  // Lọc danh sách theo ô tìm kiếm
+  const filteredMembers = useMemo(() => {
+    if (!searchQuery.trim()) return externalMembers;
+    const q = searchQuery.toLowerCase().trim();
+    return externalMembers.filter(m => {
+      const matchTime = m.importedAt?.toLowerCase().includes(q);
+      const matchPlatform = m.platform?.toLowerCase().includes(q);
+      if (isCallChannel) {
+        return m.phone?.toLowerCase().includes(q) || matchTime;
       }
+      return m.userId?.toLowerCase().includes(q) || matchTime || matchPlatform;
     });
-  };
+  }, [externalMembers, searchQuery, isCallChannel]);
 
-  const handleToggleAllVisible = () => {
-    const visibleCodes = paginatedInternalCustomers.map(c => c.customerCode);
-    const allSelected = visibleCodes.length > 0 && visibleCodes.every(code => selectedIds.includes(code));
-    if (allSelected) {
-      const visibleSet = new Set(visibleCodes);
-      setSelectedIds(prev => prev.filter(c => !visibleSet.has(c)));
-    } else {
-      setSelectedIds(prev => Array.from(new Set([...prev, ...visibleCodes])));
-    }
-  };
+  // Tính toán phân trang
+  const totalItems = filteredMembers.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const startIndex = totalItems === 0 ? 0 : (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const paginatedMembers = filteredMembers.slice(startIndex, endIndex);
 
-  const handleClearAllInternal = () => {
-    setSelectedIds([]);
-  };
-
-  // --- External / Manual Member Handlers ---
-  const handleRemoveExternal = (id: string) => {
+  // Xóa 1 bản ghi
+  const handleRemoveMember = (id: string) => {
     setExternalMembers(prev => prev.filter(item => item.id !== id));
   };
 
-  const handleClearAllExternal = () => {
-    setExternalMembers([]);
+  // Xóa tất cả
+  const handleClearAll = () => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa toàn bộ danh sách ${isCallChannel ? 'số điện thoại' : 'senderId'} trong tập này?`)) {
+      setExternalMembers([]);
+      setImportFeedback(`Đã xóa toàn bộ ${isCallChannel ? 'số điện thoại' : 'senderId'}.`);
+    }
   };
 
   // Thêm thủ công trực tiếp từng bản ghi
@@ -186,7 +102,7 @@ function CustomerGroupMemberModalInner({
         return;
       }
       if (externalMembers.some(m => m.phone === phone)) {
-        setImportFeedback(`Số điện thoại ${phone} đã tồn tại trong danh sách import thủ công.`);
+        setImportFeedback(`Số điện thoại ${phone} đã tồn tại trong danh sách.`);
         return;
       }
 
@@ -202,7 +118,7 @@ function CustomerGroupMemberModalInner({
       setManualPhone('');
       setImportFeedback(`Đã thêm số điện thoại ${phone} vào danh sách.`);
     } else {
-      // Kênh Chat: chỉ cần nhập senderId (bỏ Ghi chú và Nền tảng)
+      // Kênh Chat: chỉ cần nhập senderId
       const userId = manualSenderId.trim();
       if (!userId || userId.length < 2) {
         setImportFeedback('Vui lòng nhập senderId hợp lệ.');
@@ -228,22 +144,19 @@ function CustomerGroupMemberModalInner({
   };
 
   const handleSave = () => {
-    onSaveMembers(group.id, selectedIds, externalMembers);
+    onSaveMembers(group.id, [], externalMembers);
     onClose();
   };
 
-  const isAllVisibleSelected = paginatedInternalCustomers.length > 0 && 
-    paginatedInternalCustomers.every(c => selectedIds.includes(c.customerCode));
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-md shadow-2xl w-full max-w-5xl overflow-hidden border border-slate-200 flex flex-col h-[90vh]">
+      <div className="bg-white rounded-md shadow-2xl w-full max-w-5xl overflow-hidden border border-slate-200 flex flex-col h-[85vh]">
         
         {/* Header Modal */}
         <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-white select-none">
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-bold text-slate-800 tracking-wide flex items-center gap-2">
-              <span>CẤU HÌNH KHÁCH HÀNG TRONG TẬP:</span>
+              <span>CẤU HÌNH DANH SÁCH {isCallChannel ? 'SỐ ĐIỆN THOẠI' : 'SENDERID'} TRONG TẬP:</span>
               <span className="text-[#f25621] uppercase font-bold">{group.groupName}</span>
               <span className="text-slate-400 font-mono text-xs">({group.groupCode})</span>
             </h2>
@@ -268,39 +181,6 @@ function CustomerGroupMemberModalInner({
           </button>
         </div>
 
-        {/* Modal Navigation Tabs: Khách hàng trong hệ thống VS Import thủ công */}
-        <div className="flex items-center px-5 border-b border-slate-200 bg-slate-50 text-xs">
-          <button
-            onClick={() => setModalTab('internal')}
-            className={`flex items-center gap-2 py-2 px-3 border-b-2 transition-colors cursor-pointer ${
-              modalTab === 'internal'
-                ? 'border-[#f25621] text-[#f25621] font-semibold bg-white rounded-t'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Khách hàng trong hệ thống</span>
-            <span className="bg-slate-200/80 text-slate-700 px-1.5 py-0.2 rounded-full text-[10px]">
-              {selectedIds.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setModalTab('external')}
-            className={`flex items-center gap-2 py-2 px-3 border-b-2 transition-colors cursor-pointer ml-1 ${
-              modalTab === 'external'
-                ? 'border-[#f25621] text-[#f25621] font-semibold bg-white rounded-t'
-                : 'border-transparent text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Import thủ công</span>
-            <span className="bg-slate-200/80 text-slate-700 px-1.5 py-0.2 rounded-full text-[10px]">
-              {externalMembers.length}
-            </span>
-          </button>
-        </div>
-
         {/* Feedback message banner */}
         {importFeedback && (
           <div className="bg-blue-50 border-b border-blue-200 text-blue-800 px-5 py-2 text-xs flex items-center justify-between">
@@ -310,479 +190,307 @@ function CustomerGroupMemberModalInner({
             </div>
             <button
               onClick={() => setImportFeedback(null)}
-              className="text-blue-500 hover:text-blue-700 font-bold ml-2 text-xs"
+              className="text-blue-500 hover:text-blue-700 font-bold ml-2 text-xs cursor-pointer"
             >
               ×
             </button>
           </div>
         )}
 
-        {/* TAB 1: KHÁCH HÀNG TRONG HỆ THỐNG */}
-        {modalTab === 'internal' && (
-          <div className="flex-1 flex flex-col min-h-0">
-            {/* Filter & Search Bar - Đã bỏ filter Hạng KH và nút Chọn tất cả trang này */}
-            <div className="p-4 border-b border-slate-200 bg-white space-y-3">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                {/* Search input */}
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* NỘI DUNG CHÍNH: IMPORT THỦ CÔNG & DANH SÁCH TẤT CẢ SENDERID / SỐ ĐIỆN THOẠI */}
+        <div className="flex-1 flex flex-col overflow-y-auto p-5 space-y-4 bg-white text-xs">
+          
+          {/* Form nhập tay trực tiếp */}
+          <form onSubmit={handleAddManualItem} className="p-3.5 rounded border border-slate-200 bg-slate-50 space-y-3">
+            <div className="flex items-center gap-2 font-bold text-xs text-slate-800">
+              {isCallChannel ? <PhoneCall className="w-4 h-4 text-blue-600" /> : <MessageSquare className="w-4 h-4 text-emerald-600" />}
+              <span>
+                {isCallChannel 
+                  ? 'Nhập thủ công Số điện thoại cho tập' 
+                  : 'Nhập thủ công senderId cho tập'}
+              </span>
+            </div>
+
+            {isCallChannel ? (
+              /* Kênh Call: Chỉ cần nhập Số điện thoại */
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-end">
+                <div className="sm:col-span-3 space-y-1">
+                  <label className="text-[11px] font-medium text-slate-700">
+                    Số điện thoại <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Tìm kiếm theo Mã KH, Tên KH, Số điện thoại, Email, Hạng KH..."
-                    className="w-full h-8.5 pl-9 pr-3 text-xs text-slate-800 bg-white border border-slate-300 rounded focus:border-[#f25621] focus:ring-1 focus:ring-[#f25621] outline-none"
+                    value={manualPhone}
+                    onChange={(e) => setManualPhone(e.target.value)}
+                    placeholder="VD: 0903123456"
+                    className="w-full h-8 px-2.5 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none font-mono"
                   />
                 </div>
 
-                {/* Tab filter theo tình trạng chọn */}
-                <div className="flex items-center gap-1.5 text-xs">
+                <div>
                   <button
-                    type="button"
-                    onClick={() => setFilterTab('all')}
-                    className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
-                      filterTab === 'all'
-                        ? 'bg-slate-700 text-white font-medium'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
+                    type="submit"
+                    className="w-full h-8 flex items-center justify-center gap-1.5 px-3 bg-[#f25621] hover:bg-[#d94816] text-white text-xs font-semibold rounded transition-colors cursor-pointer"
                   >
-                    Tất cả ({allCustomers.length})
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Thêm số</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterTab('selected')}
-                    className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
-                      filterTab === 'selected'
-                        ? 'bg-slate-700 text-white font-medium'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    Đã chọn ({selectedIds.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilterTab('unselected')}
-                    className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
-                      filterTab === 'unselected'
-                        ? 'bg-slate-700 text-white font-medium'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    Chưa chọn ({Math.max(0, allCustomers.length - selectedIds.length)})
-                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Kênh Chat: Chỉ cần nhập senderId */
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-end">
+                <div className="sm:col-span-3 space-y-1">
+                  <label className="text-[11px] font-medium text-slate-700">
+                    senderId <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={manualSenderId}
+                    onChange={(e) => setManualSenderId(e.target.value)}
+                    placeholder="VD: zalo_88991203 hoặc fb_1000928374619..."
+                    className="w-full h-8 px-2.5 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none font-mono"
+                  />
+                </div>
 
-                  {selectedIds.length > 0 && (
+                <div>
+                  <button
+                    type="submit"
+                    className="w-full h-8 flex items-center justify-center gap-1.5 px-3 bg-[#f25621] hover:bg-[#d94816] text-white text-xs font-semibold rounded transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Thêm senderId</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </form>
+
+          {/* Bảng danh sách tất cả các senderId / số điện thoại */}
+          <div className="space-y-2.5 pt-1 flex-1 flex flex-col min-h-[220px]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="font-semibold text-slate-800 text-xs">
+                  {isCallChannel 
+                    ? `Danh sách tất cả các số điện thoại (${externalMembers.length} bản ghi):` 
+                    : `Danh sách tất cả các senderId (${externalMembers.length} bản ghi):`}
+                </div>
+                {searchQuery.trim() && (
+                  <span className="text-[11px] font-medium text-[#f25621] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded">
+                    Tìm thấy {filteredMembers.length} / {externalMembers.length} kết quả
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                {/* Ô tìm kiếm nhanh - luôn luôn hiển thị */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    placeholder={`Tìm kiếm ${isCallChannel ? 'số điện thoại' : 'senderId'}, thời gian...`}
+                    className="h-8 pl-8 pr-7 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none font-mono w-56 sm:w-64 placeholder:font-sans placeholder:text-slate-400 transition-colors shadow-2xs"
+                  />
+                  {searchQuery && (
                     <button
                       type="button"
-                      onClick={handleClearAllInternal}
-                      className="text-xs text-red-500 hover:underline cursor-pointer ml-2"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setCurrentPage(1);
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 p-0.5 rounded cursor-pointer"
+                      title="Xóa tìm kiếm"
                     >
-                      Bỏ chọn tất cả
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* Customer Table List - 4 ATTRIBUTES: Mã KH, Số điện thoại, Hạng KH, Email */}
-            <div className="flex-1 overflow-y-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 z-10">
-                  <tr className="bg-[#eef3f7] border-b border-slate-200 text-slate-700 font-semibold select-none">
-                    <th className="py-2.5 px-3 w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={isAllVisibleSelected}
-                        onChange={handleToggleAllVisible}
-                        className="rounded border-slate-300 text-[#f25621] focus:ring-[#f25621] cursor-pointer"
-                        title="Chọn / Bỏ chọn danh sách hiển thị"
-                      />
-                    </th>
-                    <th className="py-2.5 px-3 w-32">Mã KH</th>
-                    <th className="py-2.5 px-3 w-40">Số điện thoại</th>
-                    <th className="py-2.5 px-3 w-32 text-center">Hạng KH</th>
-                    <th className="py-2.5 px-3 min-w-[200px]">Email</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 bg-white">
-                  {paginatedInternalCustomers.length > 0 ? (
-                    paginatedInternalCustomers.map(cust => {
-                      const isChecked = selectedIds.includes(cust.customerCode);
-                      return (
-                        <tr
-                          key={cust.id}
-                          onClick={() => handleToggleCustomer(cust.customerCode)}
-                          className={`hover:bg-slate-50 transition-colors cursor-pointer select-none ${
-                            isChecked ? 'bg-orange-50/30' : ''
-                          }`}
-                        >
-                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleToggleCustomer(cust.customerCode)}
-                              className="rounded border-slate-300 text-[#f25621] focus:ring-[#f25621] cursor-pointer"
-                            />
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-slate-700">
-                            {cust.customerCode}
-                          </td>
-                          <td className="py-2.5 px-3 text-slate-700 font-medium">
-                            {cust.phone}
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
-                            {renderTierTag(cust.tier)}
-                          </td>
-                          <td className="py-2.5 px-3 text-slate-600">
-                            {cust.email}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-400">
-                        Không tìm thấy khách hàng nào phù hợp với điều kiện tìm kiếm.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* PHẦN CHÂN BẢNG: PAGINATION TAB 1 */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 bg-white border-t border-slate-200 text-xs text-slate-600 select-none">
-              {/* Vế trái: Dropdown chọn số mục & text hiển thị dải dữ liệu */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-slate-700">Hiển thị</span>
-                <div className="relative inline-flex items-center">
-                  <select
-                    value={internalPageSize}
-                    onChange={(e) => {
-                      setInternalPageSize(Number(e.target.value));
-                      setInternalCurrentPage(1);
-                    }}
-                    className="appearance-none bg-white border border-slate-300 rounded px-2.5 py-1 pr-6 text-xs text-slate-700 outline-none hover:border-slate-400 focus:border-[#f25621] cursor-pointer shadow-2xs"
-                  >
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-1.5 pointer-events-none" />
-                </div>
-                <span className="text-slate-700">mục</span>
-
-                <span className="text-slate-500 ml-3 sm:ml-5">
-                  {totalInternalItems === 0
-                    ? 'Hiển thị từ 0 đến 0 trong 0 mục'
-                    : `Hiển thị từ ${internalStartIndex + 1} đến ${internalEndIndex} trong ${totalInternalItems} mục`}
-                </span>
-              </div>
-
-              {/* Vế phải: Nút điều hướng các trang */}
-              <div className="flex items-center gap-4 text-xs font-normal">
-                <button
-                  type="button"
-                  onClick={() => setInternalCurrentPage(1)}
-                  disabled={internalCurrentPage <= 1}
-                  className={`transition-colors ${
-                    internalCurrentPage <= 1
-                      ? 'text-slate-400 cursor-not-allowed'
-                      : 'text-slate-600 hover:text-slate-900 cursor-pointer'
-                  }`}
-                >
-                  Trang đầu
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setInternalCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={internalCurrentPage <= 1}
-                  className={`transition-colors ${
-                    internalCurrentPage <= 1
-                      ? 'text-slate-400 cursor-not-allowed'
-                      : 'text-slate-600 hover:text-slate-900 cursor-pointer'
-                  }`}
-                >
-                  Trang trước
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setInternalCurrentPage(prev => Math.min(totalInternalPages, prev + 1))}
-                  disabled={internalCurrentPage >= totalInternalPages}
-                  className={`transition-colors ${
-                    internalCurrentPage >= totalInternalPages
-                      ? 'text-slate-400 cursor-not-allowed'
-                      : 'text-slate-600 hover:text-slate-900 cursor-pointer'
-                  }`}
-                >
-                  Trang kế
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setInternalCurrentPage(totalInternalPages)}
-                  disabled={internalCurrentPage >= totalInternalPages}
-                  className={`transition-colors ${
-                    internalCurrentPage >= totalInternalPages
-                      ? 'text-slate-400 cursor-not-allowed'
-                      : 'text-slate-600 hover:text-slate-900 cursor-pointer'
-                  }`}
-                >
-                  Trang cuối
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: IMPORT THỦ CÔNG */}
-        {modalTab === 'external' && (
-          <div className="flex-1 flex flex-col overflow-y-auto p-5 space-y-4 bg-white text-xs">
-            
-            {/* Form nhập tay trực tiếp */}
-            <form onSubmit={handleAddManualItem} className="p-3.5 rounded border border-slate-200 bg-slate-50 space-y-3">
-              <div className="flex items-center gap-2 font-bold text-xs text-slate-800">
-                {isCallChannel ? <PhoneCall className="w-4 h-4 text-blue-600" /> : <MessageSquare className="w-4 h-4 text-emerald-600" />}
-                <span>
-                  {isCallChannel 
-                    ? 'Nhập thủ công Số điện thoại cho tập' 
-                    : 'Nhập thủ công senderId cho tập'}
-                </span>
-              </div>
-
-              {isCallChannel ? (
-                /* Kênh Call: Chỉ cần nhập Số điện thoại, Bỏ Ghi chú */
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-end">
-                  <div className="sm:col-span-3 space-y-1">
-                    <label className="text-[11px] font-medium text-slate-700">
-                      Số điện thoại <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={manualPhone}
-                      onChange={(e) => setManualPhone(e.target.value)}
-                      placeholder="VD: 0903123456"
-                      className="w-full h-8 px-2.5 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <button
-                      type="submit"
-                      className="w-full h-8 flex items-center justify-center gap-1.5 px-3 bg-[#f25621] hover:bg-[#d94816] text-white text-xs font-semibold rounded transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Thêm số</span>
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* Kênh Chat: Chỉ cần nhập senderId, Bỏ Ghi chú và Nền tảng */
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-end">
-                  <div className="sm:col-span-3 space-y-1">
-                    <label className="text-[11px] font-medium text-slate-700">
-                      senderId <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={manualSenderId}
-                      onChange={(e) => setManualSenderId(e.target.value)}
-                      placeholder="VD: user_100234 hoặc 889900..."
-                      className="w-full h-8 px-2.5 text-xs bg-white border border-slate-300 rounded focus:border-[#f25621] outline-none font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <button
-                      type="submit"
-                      className="w-full h-8 flex items-center justify-center gap-1.5 px-3 bg-[#f25621] hover:bg-[#d94816] text-white text-xs font-semibold rounded transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Thêm senderId</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </form>
-
-            {/* Bảng danh sách các thành viên import thủ công */}
-            <div className="space-y-2 pt-1 flex-1 flex flex-col min-h-[200px]">
-              <div className="flex items-center justify-between">
-                <div className="font-semibold text-slate-800 text-xs">
-                  Danh sách import thủ công ({externalMembers.length} bản ghi):
-                </div>
                 {externalMembers.length > 0 && (
                   <button
                     type="button"
-                    onClick={handleClearAllExternal}
-                    className="text-xs text-red-500 hover:underline cursor-pointer font-medium"
+                    onClick={handleClearAll}
+                    className="text-xs text-red-500 hover:text-red-700 hover:underline cursor-pointer font-medium whitespace-nowrap ml-1"
                   >
                     Xóa tất cả
                   </button>
                 )}
               </div>
+            </div>
 
-              <div className="border border-slate-200 rounded overflow-hidden flex-1">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#eef3f7] border-b border-slate-200 text-slate-700 font-semibold">
-                    <tr>
-                      <th className="py-2 px-3 w-12 text-center">STT</th>
-                      {isCallChannel ? (
-                        <th className="py-2 px-3 min-w-[200px]">Số điện thoại</th>
-                      ) : (
-                        <th className="py-2 px-3 min-w-[220px]">senderId</th>
-                      )}
-                      <th className="py-2 px-3 w-36">Thời gian import</th>
-                      <th className="py-2 px-3 w-16 text-center">Xóa</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 bg-white">
-                    {paginatedExternalMembers.length > 0 ? (
-                      paginatedExternalMembers.map((item, idx) => (
-                        <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-2 px-3 text-center text-slate-500">
-                            {manualStartIndex + idx + 1}
-                          </td>
-                          {isCallChannel ? (
-                            <td className="py-2 px-3 font-mono font-medium text-slate-800">
-                              {item.phone}
-                            </td>
-                          ) : (
-                            <td className="py-2 px-3 font-mono font-medium text-slate-800">
-                              {item.userId}
-                            </td>
-                          )}
-                          <td className="py-2 px-3 text-slate-500 text-[11px]">
-                            {item.importedAt}
-                          </td>
-                          <td className="py-2 px-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveExternal(item.id)}
-                              className="text-slate-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
-                              title="Xóa"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+            <div className="border border-slate-200 rounded overflow-hidden flex-1">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-[#eef3f7] border-b border-slate-200 text-slate-700 font-semibold select-none">
+                  <tr>
+                    <th className="py-2 px-3 w-12 text-center">STT</th>
+                    {isCallChannel ? (
+                      <th className="py-2 px-3 min-w-[200px]">Số điện thoại</th>
                     ) : (
-                      <tr>
-                        <td colSpan={isCallChannel ? 4 : 4} className="py-8 text-center text-slate-400">
-                          Chưa có {isCallChannel ? 'số điện thoại' : 'senderId'} nào được import thủ công cho tập này.
+                      <th className="py-2 px-3 min-w-[220px]">senderId</th>
+                    )}
+                    <th className="py-2 px-3 w-40">Thời gian import</th>
+                    <th className="py-2 px-3 w-16 text-center">Xóa</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {paginatedMembers.length > 0 ? (
+                    paginatedMembers.map((item, idx) => (
+                      <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-2 px-3 text-center text-slate-500">
+                          {startIndex + idx + 1}
+                        </td>
+                        {isCallChannel ? (
+                          <td className="py-2 px-3 font-mono font-medium text-slate-800">
+                            {item.phone}
+                          </td>
+                        ) : (
+                          <td className="py-2 px-3 font-mono font-medium text-slate-800">
+                            {item.userId}
+                          </td>
+                        )}
+                        <td className="py-2 px-3 text-slate-500 text-[11px]">
+                          {item.importedAt}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMember(item.id)}
+                            className="text-slate-400 hover:text-red-500 transition-colors p-1 cursor-pointer"
+                            title="Xóa"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </td>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-slate-400">
+                        {searchQuery ? (
+                          <div className="flex flex-col items-center justify-center gap-1.5 py-2">
+                            <Search className="w-5 h-5 text-slate-300" />
+                            <p className="text-xs text-slate-600">
+                              Không tìm thấy kết quả phù hợp với từ khóa <span className="font-semibold text-slate-800">&quot;{searchQuery}&quot;</span>.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearchQuery('');
+                                setCurrentPage(1);
+                              }}
+                              className="text-xs text-[#f25621] hover:underline font-medium cursor-pointer mt-1"
+                            >
+                              Xóa bộ lọc tìm kiếm
+                            </button>
+                          </div>
+                        ) : (
+                          `Chưa có ${isCallChannel ? 'số điện thoại' : 'senderId'} nào trong tập này.`
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
 
-                {/* PHẦN CHÂN BẢNG: PAGINATION TAB 2 (IMPORT THỦ CÔNG) */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 bg-white border-t border-slate-200 text-xs text-slate-600 select-none">
-                  {/* Vế trái: Dropdown chọn số mục & text hiển thị dải dữ liệu */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-slate-700">Hiển thị</span>
-                    <div className="relative inline-flex items-center">
-                      <select
-                        value={manualPageSize}
-                        onChange={(e) => {
-                          setManualPageSize(Number(e.target.value));
-                          setManualCurrentPage(1);
-                        }}
-                        className="appearance-none bg-white border border-slate-300 rounded px-2.5 py-1 pr-6 text-xs text-slate-700 outline-none hover:border-slate-400 focus:border-[#f25621] cursor-pointer shadow-2xs"
-                      >
-                        <option value={10}>10</option>
-                        <option value={20}>20</option>
-                        <option value={50}>50</option>
-                      </select>
-                      <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-1.5 pointer-events-none" />
-                    </div>
-                    <span className="text-slate-700">mục</span>
-
-                    <span className="text-slate-500 ml-3 sm:ml-5">
-                      {totalManualItems === 0
-                        ? 'Hiển thị từ 0 đến 0 trong 0 mục'
-                        : `Hiển thị từ ${manualStartIndex + 1} đến ${manualEndIndex} trong ${totalManualItems} mục`}
-                    </span>
+              {/* PHẦN CHÂN BẢNG: PAGINATION */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2 bg-white border-t border-slate-200 text-xs text-slate-600 select-none">
+                {/* Vế trái: Dropdown chọn số mục & text hiển thị dải dữ liệu */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-slate-700">Hiển thị</span>
+                  <div className="relative inline-flex items-center">
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="appearance-none bg-white border border-slate-300 rounded px-2.5 py-1 pr-6 text-xs text-slate-700 outline-none hover:border-slate-400 focus:border-[#f25621] cursor-pointer shadow-2xs"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-500 absolute right-1.5 pointer-events-none" />
                   </div>
+                  <span className="text-slate-700">mục</span>
 
-                  {/* Vế phải: Nút điều hướng các trang */}
-                  <div className="flex items-center gap-4 text-xs font-normal">
-                    <button
-                      type="button"
-                      onClick={() => setManualCurrentPage(1)}
-                      disabled={manualCurrentPage <= 1}
-                      className={`transition-colors ${
-                        manualCurrentPage <= 1
-                          ? 'text-slate-400 cursor-not-allowed'
-                          : 'text-slate-600 hover:text-slate-900 cursor-pointer'
-                      }`}
-                    >
-                      Trang đầu
-                    </button>
+                  <span className="text-slate-500 ml-3 sm:ml-5">
+                    {totalItems === 0
+                      ? 'Hiển thị từ 0 đến 0 trong 0 mục'
+                      : `Hiển thị từ ${startIndex + 1} đến ${endIndex} trong ${totalItems} mục`}
+                  </span>
+                </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setManualCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={manualCurrentPage <= 1}
-                      className={`transition-colors ${
-                        manualCurrentPage <= 1
-                          ? 'text-slate-400 cursor-not-allowed'
-                          : 'text-slate-600 hover:text-slate-900 cursor-pointer'
-                      }`}
-                    >
-                      Trang trước
-                    </button>
+                {/* Vế phải: Nút điều hướng các trang */}
+                <div className="flex items-center gap-4 text-xs font-normal">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage <= 1}
+                    className={`transition-colors ${
+                      currentPage <= 1
+                        ? 'text-slate-400 cursor-not-allowed'
+                        : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                    }`}
+                  >
+                    Trang đầu
+                  </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setManualCurrentPage(prev => Math.min(totalManualPages, prev + 1))}
-                      disabled={manualCurrentPage >= totalManualPages}
-                      className={`transition-colors ${
-                        manualCurrentPage >= totalManualPages
-                          ? 'text-slate-400 cursor-not-allowed'
-                          : 'text-slate-600 hover:text-slate-900 cursor-pointer'
-                      }`}
-                    >
-                      Trang kế
-                    </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage <= 1}
+                    className={`transition-colors ${
+                      currentPage <= 1
+                        ? 'text-slate-400 cursor-not-allowed'
+                        : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                    }`}
+                  >
+                    Trang trước
+                  </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setManualCurrentPage(totalManualPages)}
-                      disabled={manualCurrentPage >= totalManualPages}
-                      className={`transition-colors ${
-                        manualCurrentPage >= totalManualPages
-                          ? 'text-slate-400 cursor-not-allowed'
-                          : 'text-slate-600 hover:text-slate-900 cursor-pointer'
-                      }`}
-                    >
-                      Trang cuối
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage >= totalPages}
+                    className={`transition-colors ${
+                      currentPage >= totalPages
+                        ? 'text-slate-400 cursor-not-allowed'
+                        : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                    }`}
+                  >
+                    Trang kế
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage >= totalPages}
+                    className={`transition-colors ${
+                      currentPage >= totalPages
+                        ? 'text-slate-400 cursor-not-allowed'
+                        : 'text-slate-600 hover:text-slate-900 cursor-pointer'
+                    }`}
+                  >
+                    Trang cuối
+                  </button>
                 </div>
               </div>
             </div>
-
           </div>
-        )}
+
+        </div>
 
         {/* Modal Footer */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200 bg-slate-50 text-xs">
-          <div className="flex items-center gap-4 text-slate-600">
-            <div>
-              Trong hệ thống: <span className="font-bold text-slate-800">{selectedIds.length}</span>
-            </div>
-            <span className="text-slate-300">•</span>
-            <div>
-              Import thủ công: <span className="font-bold text-slate-800">{externalMembers.length}</span>
-            </div>
-            <span className="text-slate-300">•</span>
-            <div>
-              Tổng cộng: <span className="font-bold text-[#f25621]">{selectedIds.length + externalMembers.length}</span> thành viên
-            </div>
+          <div className="flex items-center gap-2 text-slate-700">
+            <span>Tổng số {isCallChannel ? 'số điện thoại' : 'senderId'}:</span>
+            <span className="font-bold text-[#f25621] text-sm">{externalMembers.length}</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -812,8 +520,7 @@ export function CustomerGroupMemberModal({
   isOpen,
   onClose,
   group,
-  onSaveMembers,
-  allCustomers = INITIAL_CUSTOMERS
+  onSaveMembers
 }: CustomerGroupMemberModalProps) {
   if (!isOpen || !group) return null;
 
@@ -823,7 +530,6 @@ export function CustomerGroupMemberModal({
       group={group}
       onClose={onClose}
       onSaveMembers={onSaveMembers}
-      allCustomers={allCustomers}
     />
   );
 }

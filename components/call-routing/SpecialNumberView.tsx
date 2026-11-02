@@ -179,7 +179,7 @@ export function SpecialNumberView() {
     setIsMemberModalOpen(true);
   };
 
-  // Save members from MemberModal (cả khách trong hệ thống & import ngoài hệ thống)
+  // Save members from MemberModal (danh sách senderId / số điện thoại)
   const handleSaveMembers = (
     groupId: string, 
     customerIds: string[], 
@@ -193,7 +193,7 @@ export function SpecialNumberView() {
         if (g.id === groupId) {
           return {
             ...g,
-            customerIds,
+            customerIds: [],
             externalMembers: externalMembers ?? g.externalMembers ?? [],
             updatedAt: formattedDate
           };
@@ -207,8 +207,9 @@ export function SpecialNumberView() {
     });
 
     const targetGroup = groups.find(g => g.id === groupId);
-    const totalCount = customerIds.length + (externalMembers?.length || 0);
-    showToast(`Đã cập nhật ${totalCount} khách hàng cho tập ${targetGroup?.groupName || ''}`);
+    const count = externalMembers?.length || 0;
+    const label = targetGroup?.channel === 'Call' ? 'số điện thoại' : 'senderId';
+    showToast(`Đã cập nhật ${count} ${label} cho tập ${targetGroup?.groupName || ''}`);
   };
 
   // Save (Create or Edit) Group
@@ -273,38 +274,28 @@ export function SpecialNumberView() {
     showToast(`Đã import thành công ${newMembers.length} ${target?.channel === 'Call' ? 'số điện thoại' : 'senderId'} vào tập ${target?.groupName || ''}`);
   };
 
-  // Export CSV of customers in group (cả trong hệ thống và ngoài hệ thống)
+  // Export CSV of customers in group (danh sách senderId / số điện thoại)
   const handleDownloadGroup = (group: CustomerGroupItem) => {
-    const groupCustomers = customers.filter(c => (group.customerIds || []).includes(c.customerCode));
     const externalList = group.externalMembers || [];
+    const isCall = group.channel === 'Call';
+    const label = isCall ? 'số điện thoại' : 'senderId';
 
-    if (groupCustomers.length === 0 && externalList.length === 0) {
-      showToast(`Tập ${group.groupName} hiện chưa có khách hàng nào`);
+    if (externalList.length === 0) {
+      showToast(`Tập ${group.groupName} hiện chưa có ${label} nào`);
       return;
     }
 
-    const isCall = group.channel === 'Call';
     const headers = isCall
-      ? ['Nguồn', 'Mã KH', 'Số điện thoại', 'Hạng KH', 'Email', 'Ghi chú']
-      : ['Nguồn', 'Nền tảng', 'Mã KH / UserID', 'Số điện thoại', 'Hạng KH', 'Email', 'Ghi chú'];
+      ? ['STT', 'Số điện thoại', 'Thời gian import']
+      : ['STT', 'senderId', 'Thời gian import'];
 
     const rows: string[][] = [];
 
-    // Khách hàng nội bộ
-    groupCustomers.forEach(c => {
+    externalList.forEach((ext, idx) => {
       if (isCall) {
-        rows.push(['Hệ thống', c.customerCode, `"${c.phone}"`, c.tier || 'Bạc', `"${c.email}"`, 'Khách hàng nội bộ']);
+        rows.push([String(idx + 1), `"${ext.phone || ''}"`, `"${ext.importedAt || ''}"`]);
       } else {
-        rows.push(['Hệ thống', '-', c.customerCode, `"${c.phone}"`, c.tier || 'Bạc', `"${c.email}"`, 'Khách hàng nội bộ']);
-      }
-    });
-
-    // Khách hàng ngoài hệ thống
-    externalList.forEach(ext => {
-      if (isCall) {
-        rows.push(['Ngoài hệ thống', '-', `"${ext.phone || ''}"`, '-', '-', `"${ext.note || ''}"`]);
-      } else {
-        rows.push(['Ngoài hệ thống', ext.platform || 'Zalo', `"${ext.userId || ''}"`, '-', '-', '-', `"${ext.note || ''}"`]);
+        rows.push([String(idx + 1), `"${ext.userId || ''}"`, `"${ext.importedAt || ''}"`]);
       }
     });
 
@@ -312,12 +303,12 @@ export function SpecialNumberView() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${group.groupCode}_${group.groupName.replace(/\s+/g, '_')}_KhachHang.csv`);
+    link.setAttribute('download', `${group.groupCode}_${group.groupName.replace(/\s+/g, '_')}_DanhSach.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    showToast(`Đã tải xuống danh sách ${rows.length} khách hàng của tập ${group.groupName}`);
+    showToast(`Đã tải xuống danh sách ${rows.length} ${label} của tập ${group.groupName}`);
   };
 
   return (
@@ -582,10 +573,10 @@ export function SpecialNumberView() {
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* 2. Răng cưa (Cog) -> POPUP THÊM KHÁCH HÀNG VÀO TẬP */}
+                          {/* 2. Răng cưa (Cog) -> POPUP CẤU HÌNH DANH SÁCH SENDERID / SỐ ĐIỆN THOẠI */}
                           <button
                             onClick={() => handleOpenMemberModal(item)}
-                            title="Thêm khách hàng vào tập (Cấu hình danh sách khách hàng)"
+                            title={item.channel === 'Call' ? 'Cấu hình danh sách số điện thoại' : 'Cấu hình danh sách senderId'}
                             className="text-slate-600 hover:text-[#f25621] transition-colors cursor-pointer"
                           >
                             <Cog className="w-3.5 h-3.5" />

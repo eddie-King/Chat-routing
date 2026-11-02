@@ -118,14 +118,15 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
     setInputOutput(newOutcome);
     const matchedFilter = availableInputFilters.find(f => f.output === newOutcome);
     if (matchedFilter) {
+      const filterValues = matchedFilter.values || matchedFilter.criteria?.map(c => c.value) || [];
       if (matchedFilter.type === 'Nguồn') {
-        const isZaloOnly = matchedFilter.values.includes('Zalo') && !matchedFilter.values.includes('Facebook');
+        const isZaloOnly = filterValues.includes('Zalo') && !filterValues.includes('Facebook');
         setInputSource(isZaloOnly ? 'Zalo' : 'Facebook');
-        setInputValues(matchedFilter.values);
+        setInputValues(filterValues);
       } else {
-        const hasZalo = matchedFilter.values.some(v => v.toLowerCase().includes('zalo') || v.toLowerCase().includes('oa'));
+        const hasZalo = filterValues.some(v => v.toLowerCase().includes('zalo') || v.toLowerCase().includes('oa'));
         setInputSource(hasZalo ? 'Zalo' : 'Facebook');
-        setInputValues(matchedFilter.values);
+        setInputValues(filterValues);
       }
     }
   };
@@ -231,12 +232,13 @@ function ChatRoutingModalForm({ initialData, onClose, onSave, onNavigateToInputC
     let curSource = inputSource;
     let curValues = inputValues;
     if (matchedFilter) {
+      const filterValues = matchedFilter.values || matchedFilter.criteria?.map(c => c.value) || [];
       if (matchedFilter.type === 'Nguồn') {
-        curSource = matchedFilter.values.includes('Zalo') && !matchedFilter.values.includes('Facebook') ? 'Zalo' : 'Facebook';
-        curValues = matchedFilter.values;
+        curSource = filterValues.includes('Zalo') && !filterValues.includes('Facebook') ? 'Zalo' : 'Facebook';
+        curValues = filterValues;
       } else {
-        curSource = matchedFilter.values.some(v => v.toLowerCase().includes('zalo') || v.toLowerCase().includes('oa')) ? 'Zalo' : 'Facebook';
-        curValues = matchedFilter.values;
+        curSource = filterValues.some(v => v.toLowerCase().includes('zalo') || v.toLowerCase().includes('oa')) ? 'Zalo' : 'Facebook';
+        curValues = filterValues;
       }
     }
 

@@ -1,10 +1,25 @@
-export type ChatRoutingInputType = 'Nguồn' | 'Page' | 'Kênh tiếp nhận';
+// Danh sách các loại Type điều kiện đầu vào cho Chat Routing
+export type ChatRoutingInputType = 
+  | 'Hàng đợi VIP' 
+  | 'Hàng đợi Thường' 
+  | 'Page' 
+  | 'Giới tính' 
+  | 'Khung giờ' 
+  | 'Kênh tiếp nhận'
+  | 'Nguồn'; // Giữ lại tương thích chuyển đổi
+
+export interface ChatRoutingInputCriterion {
+  id: string;
+  type: ChatRoutingInputType;
+  value: string;
+}
 
 export interface ChatRoutingInputFilterItem {
   id: string;
-  type: ChatRoutingInputType; // Cột 1: Type (Nguồn, Page...)
-  values: string[]; // Cột 2: Value (Cho phép chọn nhiều)
-  output: string; // Cột 3: Output (Tên bộ lọc / giá trị cung cấp cho trường Input)
+  output: string; // 1 Output chung cho cả bộ điều kiện
+  criteria?: ChatRoutingInputCriterion[]; // Nhiều dòng type, value
+  type?: ChatRoutingInputType; // Tương thích cũ
+  values?: string[]; // Tương thích cũ
   description?: string;
   createdAt: string;
   status: 'Hoạt động' | 'Tạm dừng';
@@ -16,6 +31,117 @@ export interface ChatRoutingInputRule {
   values: string[]; // Cho phép chọn nhiều Page / OA / Giá trị
   output: string;   // Đích tiếp nhận / Đầu ra
 }
+
+// Lấy danh sách tên các tập số trong Quản lý tập số đặc biệt
+export function getSpecialNumberGroupNames(): string[] {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem('unispace_customer_groups');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const names = parsed.map((g: any) => g.groupName).filter(Boolean);
+          if (names.length > 0) return names;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return ['Kenk chat', 'Test group phone'];
+}
+
+export const CHAT_INPUT_VALUE_OPTIONS: Record<ChatRoutingInputType, string[]> = {
+  'Hàng đợi VIP': [
+    'Kenk chat',
+    'Test group phone'
+  ],
+  'Hàng đợi Thường': [
+    'Tập khách hàng'
+  ],
+  'Page': [
+    'Fanpage UCX Customer Support',
+    'Fanpage UniSpace Tư vấn Bán hàng & Dịch vụ',
+    'UniSpace Fanpage Toàn quốc',
+    'UniSpace Tech & Dev Support',
+    'UniSpace Official Account VIP (Zalo)',
+    'Trung tâm CSKH UniSpace Toàn quốc (Zalo)',
+    'UniSpace Tech Support OA (Zalo)',
+    'Website unispace.vn - LiveChat Widget'
+  ],
+  'Giới tính': [
+    'Nam',
+    'Nữ',
+    'Chưa xác định',
+    'Tất cả'
+  ],
+  'Khung giờ': [
+    'Giờ hành chính (08:00 AM – 05:30 PM)',
+    'Ca sáng (08:00 AM – 12:00 PM)',
+    'Ca chiều (01:30 PM – 05:30 PM)',
+    'Ca tối CSKH (06:00 PM – 10:00 PM)',
+    'Ngoài giờ làm việc',
+    'Cuối tuần (Thứ 7 - Chủ nhật)',
+    '24/7 (Toàn thời gian)'
+  ],
+  'Kênh tiếp nhận': [
+    'Facebook',
+    'Zalo',
+    'Website LiveChat',
+    'Telegram',
+    'Viber',
+    'In-App Mobile SDK'
+  ],
+  'Nguồn': [
+    'Facebook',
+    'Zalo',
+    'Website LiveChat'
+  ]
+};
+
+// Dữ liệu mẫu ban đầu cho Cấu hình Input Chat Routing (Mỗi bộ điều kiện gồm nhiều dòng Type - Value, chung 1 Output)
+export const INITIAL_CHAT_INPUT_FILTERS: ChatRoutingInputFilterItem[] = [
+  {
+    id: 'flt-1',
+    output: 'INPUT_VIP_lt-1',
+    criteria: [
+      { id: 'crit-1-1', type: 'Hàng đợi VIP', value: 'Kenk chat' },
+      { id: 'crit-1-2', type: 'Page', value: 'Fanpage UCX Customer Support' }
+    ],
+    type: 'Hàng đợi VIP',
+    values: ['Kenk chat'],
+    description: 'Bộ điều kiện tiếp nhận từ Hàng đợi VIP (Kenk chat) & Page UCX Customer Support',
+    createdAt: '28/08/2026 09:30:15',
+    status: 'Hoạt động'
+  },
+  {
+    id: 'flt-2',
+    output: 'INPUT_THUONG_FEMALE_WORKHOURS',
+    criteria: [
+      { id: 'crit-2-1', type: 'Hàng đợi Thường', value: 'Tập khách hàng' },
+      { id: 'crit-2-2', type: 'Giới tính', value: 'Nữ' },
+      { id: 'crit-2-3', type: 'Khung giờ', value: 'Giờ hành chính (08:00 AM – 05:30 PM)' }
+    ],
+    type: 'Hàng đợi Thường',
+    values: ['Tập khách hàng'],
+    description: 'Bộ điều kiện tiếp nhận Hàng đợi Thường khách Nữ trong giờ hành chính',
+    createdAt: '28/08/2026 10:15:20',
+    status: 'Hoạt động'
+  },
+  {
+    id: 'flt-3',
+    output: 'INPUT_THUONG_NIGHT_SHIFT',
+    criteria: [
+      { id: 'crit-3-1', type: 'Hàng đợi Thường', value: 'Tập khách hàng' },
+      { id: 'crit-3-2', type: 'Khung giờ', value: 'Ca tối CSKH (06:00 PM – 10:00 PM)' }
+    ],
+    type: 'Hàng đợi Thường',
+    values: ['Tập khách hàng'],
+    description: 'Bộ điều kiện tư vấn Hàng đợi Thường ca tối',
+    createdAt: '28/08/2026 11:00:45',
+    status: 'Hoạt động'
+  }
+];
 
 export interface ChatRoutingConfigItem {
   id: string;
@@ -132,36 +258,7 @@ export const CHAT_PAGES_BY_SOURCE: Record<'Zalo' | 'Facebook', ChatPageItem[]> =
   ]
 };
 
-// Dữ liệu mẫu ban đầu cho Cấu hình Input Chat Routing (Type, Value [chọn nhiều], Output)
-export const INITIAL_CHAT_INPUT_FILTERS: ChatRoutingInputFilterItem[] = [
-  {
-    id: 'flt-1',
-    type: 'Page',
-    values: ['UCX Customer Support', 'UniSpace Fanpage Toàn quốc'],
-    output: 'INPUT_FB_TECH_SUPPORT',
-    description: 'Điều kiện tiếp nhận phiên chat từ các Fanpage hỗ trợ kỹ thuật và thông tin',
-    createdAt: '28/08/2026 09:30:15',
-    status: 'Hoạt động'
-  },
-  {
-    id: 'flt-2',
-    type: 'Page',
-    values: ['UniSpace Official Account VIP'],
-    output: 'INPUT_ZALO_VIP_DESK',
-    description: 'Điều kiện tiếp nhận từ Zalo OA khách hàng đặc quyền VIP',
-    createdAt: '28/08/2026 10:15:20',
-    status: 'Hoạt động'
-  },
-  {
-    id: 'flt-3',
-    type: 'Page',
-    values: ['UniSpace Tư vấn Bán hàng & Dịch vụ'],
-    output: 'INPUT_FB_SALES_ADVISORY',
-    description: 'Điều kiện tiếp nhận từ Fanpage tư vấn bán hàng và dịch vụ trực tuyến',
-    createdAt: '28/08/2026 11:00:45',
-    status: 'Hoạt động'
-  }
-];
+
 
 export const CHAT_BRANCHES = [
   'Chi nhánh Hà Nội',

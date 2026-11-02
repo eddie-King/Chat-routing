@@ -209,7 +209,7 @@ export const INITIAL_CUSTOMER_GROUPS: CustomerGroupItem[] = [
     channel: 'Chat',
     createdAt: '21/09/2026 10:50:24',
     updatedAt: '25/09/2026 11:07:05',
-    customerIds: ['KH10001', 'KH10002', 'KH10005', 'KH10008'],
+    customerIds: [],
     externalMembers: [
       { id: 'ext-1', type: 'chat_user', platform: 'Zalo', userId: 'zalo_88991203', note: 'Khách hàng VIP Zalo OA', importedAt: '21/09/2026 10:55:00' },
       { id: 'ext-2', type: 'chat_user', platform: 'Facebook', userId: 'fb_1000928374619', note: 'Khách hàng VIP Fanpage', importedAt: '21/09/2026 10:56:00' }
@@ -223,7 +223,7 @@ export const INITIAL_CUSTOMER_GROUPS: CustomerGroupItem[] = [
     channel: 'Call',
     createdAt: '28/08/2026 10:40:34',
     updatedAt: '',
-    customerIds: ['KH10003', 'KH10004', 'KH10007'],
+    customerIds: [],
     externalMembers: [
       { id: 'ext-3', type: 'phone', phone: '0989123456', note: 'Hotline ưu tiên tổng giám đốc', importedAt: '28/08/2026 10:45:00' },
       { id: 'ext-4', type: 'phone', phone: '0908889999', note: 'Đối tác chiến lược VIP', importedAt: '28/08/2026 10:45:00' }
