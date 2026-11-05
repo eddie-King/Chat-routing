@@ -388,22 +388,12 @@ export function ChatRoutingConfigView({
                 </th>
 
                 <th 
-                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors group min-w-[180px]"
-                  onClick={() => handleSort('skillGroup')}
+                  className="py-2.5 px-3 cursor-pointer hover:bg-slate-100 transition-colors group min-w-[220px]"
+                  onClick={() => handleSort('fallbackAction')}
                 >
                   <div className="flex items-center">
-                    <span>Kỹ năng tiếp nhận</span>
-                    {renderSortIcon('skillGroup')}
-                  </div>
-                </th>
-
-                <th 
-                  className="py-2.5 px-3 text-center cursor-pointer hover:bg-slate-100 transition-colors group w-32"
-                  onClick={() => handleSort('queueSize')}
-                >
-                  <div className="flex items-center justify-center">
-                    <span>Kích thước hàng đợi</span>
-                    {renderSortIcon('queueSize')}
+                    <span>Fallback</span>
+                    {renderSortIcon('fallbackAction')}
                   </div>
                 </th>
 
@@ -476,17 +466,10 @@ export function ChatRoutingConfigView({
                       </span>
                     </td>
 
-                    {/* Kỹ năng tiếp nhận */}
+                    {/* Cột Fallback */}
                     <td className="py-2.5 px-3 whitespace-nowrap text-slate-700">
-                      <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-xs font-medium border border-slate-200">
-                        {item.skillGroup || item.vipSkillName || item.stdSkillName || 'Mặc định'}
-                      </span>
-                    </td>
-
-                    {/* Kích thước hàng đợi */}
-                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                      <span className="font-semibold text-slate-700 text-xs">
-                        {item.queueSize ?? item.stdQueueSize ?? item.vipQueueSize ?? 25} phiên
+                      <span className="bg-slate-100 text-slate-700 px-2.5 py-1 rounded text-xs font-medium border border-slate-200">
+                        {item.fallbackAction || item.stdFallbackAction || item.vipFallbackAction || 'Tin nhắn ngoài giờ'}
                       </span>
                     </td>
 
@@ -498,7 +481,7 @@ export function ChatRoutingConfigView({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                  <td colSpan={5} className="py-8 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <AlertCircle className="w-6 h-6 text-slate-300" />
                       <span>Không tìm thấy bản ghi cấu hình Chat Routing phù hợp</span>

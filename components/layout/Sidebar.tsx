@@ -32,6 +32,7 @@ export type CallRoutingSubView =
   | 'social-media-channels'
   | 'auto-messages-config'
   | 'working-hours-config'
+  | 'sla-config'
   | 'skill-management'
   | 'skill-group'
   | 'special-numbers'
@@ -60,7 +61,7 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const isRoutingGroupActive = currentView === 'routing-config' || currentView === 'chat-routing-config' || currentView === 'chat-routing-input' || currentView === 'auto-messages-config' || currentView === 'working-hours-config';
+  const isRoutingGroupActive = currentView === 'routing-config' || currentView === 'chat-routing-config' || currentView === 'chat-routing-input' || currentView === 'auto-messages-config' || currentView === 'working-hours-config' || currentView === 'sla-config';
 
   return (
     <aside 
@@ -158,14 +159,28 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
           </button>
         </div>
 
-        {/* Section: Kiểm soát chất lượng Agent */}
+        {/* Section: Kiểm soát chất lượng Agent & SLA */}
         <div className="pt-1">
           {!isCollapsed && (
             <div className="px-2 py-1.5 text-[11px] font-medium text-slate-400 tracking-wide">
-              Kiểm soát chất lượng Agent
+              Chất lượng dịch vụ
             </div>
           )}
           <div className="space-y-0.5">
+            {/* Cấu hình SLA */}
+            <button
+              onClick={() => onSelectView('sla-config')}
+              className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-colors cursor-pointer ${
+                currentView === 'sla-config'
+                  ? 'bg-orange-50 text-[#f25621] font-semibold'
+                  : 'hover:bg-slate-50 text-slate-600'
+              } ${isCollapsed ? 'justify-center' : ''}`}
+              title="Cấu hình SLA"
+            >
+              <Clock className={`w-4 h-4 shrink-0 ${currentView === 'sla-config' ? 'text-[#f25621]' : 'text-slate-400'}`} />
+              {!isCollapsed && <span className="font-medium">Cấu hình SLA</span>}
+            </button>
+
             <button
               className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md hover:bg-slate-50 text-slate-600 transition-colors cursor-pointer ${
                 isCollapsed ? 'justify-center' : ''
@@ -329,6 +344,20 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
                   >
                     <span className={`w-1.5 h-1.5 rounded-full ${currentView === 'working-hours-config' ? 'bg-[#f25621]' : 'bg-slate-300'}`}></span>
                     <span className="truncate">Lịch làm việc</span>
+                  </button>
+
+                  {/* Cấu hình SLA */}
+                  <button
+                    onClick={() => onSelectView('sla-config')}
+                    className={`w-full flex items-center gap-2 px-2 py-1 rounded text-left transition-colors cursor-pointer ${
+                      currentView === 'sla-config'
+                        ? 'text-[#f25621] font-semibold bg-orange-50/60'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                    title="Cấu hình SLA (Chất lượng dịch vụ)"
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${currentView === 'sla-config' ? 'bg-[#f25621]' : 'bg-slate-300'}`}></span>
+                    <span className="truncate">Cấu hình SLA</span>
                   </button>
 
                   {/* TÀI KHOẢN MẠNG XÃ HỘI (THE TARGET VIEW FROM USER IMAGE 1) */}
@@ -555,6 +584,20 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
                       <Calendar className={`w-3.5 h-3.5 shrink-0 ${currentView === 'working-hours-config' ? 'text-[#f25621]' : 'text-slate-400'}`} />
                       <span className="truncate">Cấu hình giờ làm việc</span>
                     </button>
+
+                    {/* Submenu 5: Cấu hình SLA */}
+                    <button
+                      onClick={() => onSelectView('sla-config')}
+                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-left transition-colors cursor-pointer text-xs ${
+                        currentView === 'sla-config'
+                          ? 'bg-orange-50 text-[#f25621] font-bold border-l-2 border-[#f25621]'
+                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      }`}
+                      title="Cấu hình SLA (Ngưỡng phản hồi & Thời hạn xử lý)"
+                    >
+                      <Clock className={`w-3.5 h-3.5 shrink-0 ${currentView === 'sla-config' ? 'text-[#f25621]' : 'text-slate-400'}`} />
+                      <span className="truncate">Cấu hình SLA</span>
+                    </button>
                   </div>
                 )}
 
@@ -588,6 +631,13 @@ export function Sidebar({ currentView, onSelectView, isCollapsed, onToggleCollap
                       className={`p-1.5 rounded ${currentView === 'working-hours-config' ? 'bg-orange-100 text-[#f25621]' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       <Calendar className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onSelectView('sla-config')}
+                      title="Cấu hình SLA"
+                      className={`p-1.5 rounded ${currentView === 'sla-config' ? 'bg-orange-100 text-[#f25621]' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => onSelectView('special-numbers')}

@@ -28,6 +28,7 @@ import { DeleteConfirmModal } from './DeleteConfirmModal';
 interface WorkingHoursConfigViewProps {
   onSwitchToCallRouting?: () => void;
   onSwitchToChatRouting?: () => void;
+  onSwitchToSla?: () => void;
 }
 
 // Helper to extract default shifts (ca 1, ca 2) from active schedule's weekdays
@@ -136,7 +137,8 @@ function TimeBox({
 
 export function WorkingHoursConfigView({
   onSwitchToCallRouting: _onSwitchToCallRouting,
-  onSwitchToChatRouting: _onSwitchToChatRouting
+  onSwitchToChatRouting: _onSwitchToChatRouting,
+  onSwitchToSla
 }: WorkingHoursConfigViewProps) {
   // Schedules List state backed by localStorage
   const [schedules, setSchedules] = useState<WorkingScheduleItem[]>(() => {
@@ -658,12 +660,21 @@ export function WorkingHoursConfigView({
           </h1>
         </div>
 
-        {/* Nút + Tạo lịch đồng bộ màu theme hệ thống #f25621 */}
-        <div className="flex items-center gap-2">
+        {/* Nút Cấu hình SLA & Tạo lịch */}
+        <div className="flex items-center gap-2.5">
+          {onSwitchToSla && (
+            <button
+              type="button"
+              onClick={onSwitchToSla}
+              className="inline-flex items-center justify-center px-3.5 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-2xs shrink-0"
+            >
+              Cấu hình SLA &rarr;
+            </button>
+          )}
           <button
             type="button"
             onClick={handleOpenCreateModal}
-            className="inline-flex items-center justify-center px-4 py-2 bg-[#f25621] hover:bg-[#d94412] text-white text-sm font-medium rounded-lg transition-colors cursor-pointer shadow-xs shrink-0"
+            className="inline-flex items-center justify-center px-4 py-2 bg-[#f25621] hover:bg-[#d94412] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer shadow-xs shrink-0"
           >
             + Tạo lịch
           </button>
